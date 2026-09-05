@@ -1,9 +1,14 @@
+import 'package:sqflite/sqflite.dart';
+import 'app_database.dart';
+
 class TrabajadorDao {
-  Future<void> create(Map<String, dynamic> trabajador) async {
-    // CRUD SQLite trabajadores SSOMA.
+  Future<int> create(Map<String, dynamic> trabajador) async {
+    final db = await AppDatabase.instance.database;
+    return db.insert('trabajadores', trabajador);
   }
 
   Future<List<Map<String, dynamic>>> findAll() async {
-    return [];
+    final db = await AppDatabase.instance.database;
+    return db.query('trabajadores');
   }
 }
