@@ -30,11 +30,26 @@ class HomePage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('MUR WY SSOMA DIGITAL'),
       ),
-      body: const Center(
-        child: Text(
-          'Sistema SSOMA listo para desarrollo',
-          style: TextStyle(fontSize: 20),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _moduleCard('Personal Activo', Icons.people),
+            _moduleCard('Capacitaciones', Icons.school),
+            _moduleCard('Inspecciones F-SGI-04-01', Icons.assignment),
+            _moduleCard('Reportes PDF / Excel', Icons.picture_as_pdf),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _moduleCard(String title, IconData icon) {
+    return Card(
+      child: ListTile(
+        leading: Icon(icon),
+        title: Text(title),
+        trailing: const Icon(Icons.arrow_forward_ios),
       ),
     );
   }
