@@ -1,5 +1,6 @@
 name: MUR WY SSOMA DIGITAL RELEASE APK
 
+# Trigger técnico para validar la última corrección del pipeline Android
 on:
   workflow_dispatch:
   push:
