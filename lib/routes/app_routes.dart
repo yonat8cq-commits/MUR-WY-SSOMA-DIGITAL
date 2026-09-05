@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../screens/module_page.dart';
 
 class AppRoutes {
   static const home = '/';
@@ -8,10 +9,10 @@ class AppRoutes {
   static const reportes = '/reportes';
 
   static Map<String, WidgetBuilder> routes = {
-    home: (_) => const Placeholder(),
-    personal: (_) => const Placeholder(),
-    capacitaciones: (_) => const Placeholder(),
-    inspecciones: (_) => const Placeholder(),
-    reportes: (_) => const Placeholder(),
+    home: (_) => const ModulePage(title: 'MUR WY SSOMA DIGITAL'),
+    personal: (_) => const ModulePage(title: 'Personal Activo'),
+    capacitaciones: (_) => const ModulePage(title: 'Capacitaciones'),
+    inspecciones: (_) => const ModulePage(title: 'Inspecciones F-SGI-04-01'),
+    reportes: (_) => const ModulePage(title: 'Reportes PDF / Excel'),
   };
 }
