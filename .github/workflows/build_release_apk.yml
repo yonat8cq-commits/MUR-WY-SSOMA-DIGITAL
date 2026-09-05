@@ -20,6 +20,15 @@ jobs:
           flutter-version: '3.24.0'
           channel: stable
 
+      - name: Show build environment
+        run: |
+          echo "Flutter version"
+          flutter --version
+          echo "Java version"
+          java -version
+          echo "Gradle version"
+          gradle --version || true
+
       - name: Flutter dependencies
         run: flutter pub get
 
