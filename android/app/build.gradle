@@ -1,0 +1,16 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.murwy.ssoma.digital'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.murwy.ssoma.digital'
+        minSdk 23
+        targetSdk 35
+        versionCode 1
+        versionName '1.0.0'
+    }
+}
