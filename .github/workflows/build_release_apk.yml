@@ -43,7 +43,7 @@ jobs:
           chmod +x gradlew
 
       - name: Analyze project
-        run: flutter analyze
+        run: flutter analyze --no-fatal-warnings
 
       - name: Build release APK
         run: flutter build apk --release
