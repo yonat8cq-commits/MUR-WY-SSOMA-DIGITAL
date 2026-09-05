@@ -1,9 +1,13 @@
+import 'app_database.dart';
+
 class InspeccionDao {
-  Future<void> create(Map<String, dynamic> inspeccion) async {
-    // CRUD SQLite inspecciones F-SGI-04-01.
+  Future<int> create(Map<String, dynamic> inspeccion) async {
+    final db = await AppDatabase.instance.database;
+    return db.insert('inspecciones', inspeccion);
   }
 
   Future<List<Map<String, dynamic>>> findAll() async {
-    return [];
+    final db = await AppDatabase.instance.database;
+    return db.query('inspecciones');
   }
 }
