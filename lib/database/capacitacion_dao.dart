@@ -1,9 +1,9 @@
 class CapacitacionDao {
   Future<void> create(Map<String, dynamic> capacitacion) async {
-    // CRUD capacitaciones.
+    // CRUD SQLite capacitaciones SSOMA.
   }
 
-  Future<List<Map<String, dynamic>>> getAll() async {
+  Future<List<Map<String, dynamic>>> findAll() async {
     return [];
   }
 }
