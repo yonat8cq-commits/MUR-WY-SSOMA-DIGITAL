@@ -6,7 +6,7 @@
     <application
         android:label="MUR WY SSOMA DIGITAL"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@drawable/ic_launcher">
 
         <meta-data
             android:name="flutterEmbedding"
