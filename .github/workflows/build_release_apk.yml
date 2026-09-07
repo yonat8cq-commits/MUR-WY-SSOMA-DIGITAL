@@ -34,28 +34,28 @@ jobs:
       - name: Prepare Gradle Wrapper
         run: |
           cd android
-          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-            wget -q https://services.gradle.org/distributions/gradle-8.7-bin.zip -O /tmp/gradle.zip
-            unzip -q /tmp/gradle.zip -d /opt
-            /opt/gradle-8.7/bin/gradle wrapper --gradle-version 8.7
-          fi
           chmod +x gradlew
 
       - name: Analyze project
         run: flutter analyze --no-fatal-warnings
 
-      - name: Build release APK
-        run: flutter build apk --release
+      - name: Build release APK verbose
+        run: flutter build apk --release --verbose
 
-      - name: Locate APK
+      - name: Inspect build output
+        if: always()
         run: |
-          echo "Searching generated APK..."
-          find . -name "*.apk" -type f
+          echo "=== APK SEARCH ==="
+          find . -name "*.apk" -type f || true
+          echo "=== BUILD DIRECTORY ==="
+          ls -R build 2>/dev/null | head -200 || true
 
       - name: Upload APK artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: MUR-WY-SSOMA-DIGITAL-APK
           path: |
             build/**/*.apk
             **/*.apk
+          if-no-files-found: warn
