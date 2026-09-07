@@ -1,7 +1,5 @@
 name: MUR WY SSOMA DIGITAL RELEASE APK
 
-# Trigger técnico para validar la última corrección del pipeline Android
-# Workflow touch para forzar una nueva ejecución en main
 on:
   workflow_dispatch:
   push:
@@ -24,9 +22,7 @@ jobs:
 
       - name: Show build environment
         run: |
-          echo "Flutter version"
           flutter --version
-          echo "Java version"
           java -version
 
       - name: Clean Flutter
@@ -39,7 +35,6 @@ jobs:
         run: |
           cd android
           if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-            echo "Gradle wrapper jar missing. Installing Gradle 8.7 and generating wrapper..."
             wget -q https://services.gradle.org/distributions/gradle-8.7-bin.zip -O /tmp/gradle.zip
             unzip -q /tmp/gradle.zip -d /opt
             /opt/gradle-8.7/bin/gradle wrapper --gradle-version 8.7
@@ -52,8 +47,15 @@ jobs:
       - name: Build release APK
         run: flutter build apk --release
 
+      - name: Locate APK
+        run: |
+          echo "Searching generated APK..."
+          find . -name "*.apk" -type f
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: MUR-WY-SSOMA-DIGITAL-APK
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: |
+            build/**/*.apk
+            **/*.apk
