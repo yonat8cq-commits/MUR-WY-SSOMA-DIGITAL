@@ -29,6 +29,9 @@ jobs:
           echo "Java version"
           java -version
 
+      - name: Clean Flutter
+        run: flutter clean
+
       - name: Flutter dependencies
         run: flutter pub get
 
