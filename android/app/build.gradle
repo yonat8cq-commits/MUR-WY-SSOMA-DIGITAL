@@ -16,7 +16,6 @@ android {
         versionName '1.0.0'
     }
 
-    // Mantener compatibilidad entre Java y Kotlin durante la compilación release
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -25,4 +24,8 @@ android {
     kotlinOptions {
         jvmTarget = '17'
     }
+}
+
+flutter {
+    source '../..'
 }
