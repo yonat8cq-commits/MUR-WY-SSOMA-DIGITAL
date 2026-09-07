@@ -31,15 +31,26 @@ jobs:
       - name: Flutter dependencies
         run: flutter pub get
 
-      - name: Prepare Gradle Wrapper
+      - name: Repair Gradle Wrapper
         run: |
           cd android
+          chmod +x gradlew
+
+          echo "Checking Gradle wrapper jar..."
+          if ! unzip -t gradle/wrapper/gradle-wrapper.jar >/dev/null 2>&1; then
+            echo "Invalid Gradle wrapper jar detected. Restoring wrapper..."
+            rm -f gradle/wrapper/gradle-wrapper.jar
+            wget -q https://services.gradle.org/distributions/gradle-8.7-bin.zip -O /tmp/gradle.zip
+            unzip -q /tmp/gradle.zip -d /tmp/gradle-dist
+            cp /tmp/gradle-dist/gradle-8.7/lib/plugins/gradle-wrapper-main-8.7.jar gradle/wrapper/gradle-wrapper.jar
+          fi
+
           chmod +x gradlew
 
       - name: Analyze project
         run: flutter analyze --no-fatal-warnings
 
-      - name: Build release APK verbose
+      - name: Build release APK
         run: flutter build apk --release --verbose
 
       - name: Inspect build output
@@ -47,8 +58,6 @@ jobs:
         run: |
           echo "=== APK SEARCH ==="
           find . -name "*.apk" -type f || true
-          echo "=== BUILD DIRECTORY ==="
-          ls -R build 2>/dev/null | head -200 || true
 
       - name: Upload APK artifact
         if: always()
