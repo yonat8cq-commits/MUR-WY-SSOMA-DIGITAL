@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:signature/signature.dart';
+import '../../services/offline_workflow_service.dart';
 
 class TrainingViewData {
   final String title;
@@ -49,6 +50,11 @@ class _TrainingDetailPageState extends State<TrainingDetailPage> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (signaturePng == null) return;
+    await OfflineWorkflowService.instance.saveTrainingSignature(
+      '194076_1_2026-02-01',
+      signaturePng,
+    );
+    if (!mounted) return;
 
     await showDialog<void>(
       context: context,
@@ -57,7 +63,7 @@ class _TrainingDetailPageState extends State<TrainingDetailPage> {
         icon: const Icon(Icons.verified_rounded, color: Color(0xFF16743B), size: 52),
         title: const Text('Firma registrada'),
         content: const Text('Tu confirmación quedó guardada en este dispositivo. La sincronización con el servidor se incorporará en la siguiente fase.'),
-        actions: [FilledButton(onPressed: () { Navigator.pop(dialogContext); Navigator.pop(context); }, child: const Text('FINALIZAR'))],
+        actions: [FilledButton(onPressed: () { Navigator.pop(dialogContext); Navigator.pop(context, true); }, child: const Text('FINALIZAR'))],
       ),
     );
   }

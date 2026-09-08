@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/offline_workflow_service.dart';
 import 'training_detail_page.dart';
 
 class WorkerHomePage extends StatefulWidget {
@@ -10,6 +11,7 @@ class WorkerHomePage extends StatefulWidget {
 
 class _WorkerHomePageState extends State<WorkerHomePage> {
   int _index = 0;
+  bool _signed = false;
 
   static const _course = TrainingViewData(
     title: 'HIGIENE OCUPACIONAL (AGENTES FÍSICOS, QUÍMICOS, BIOLÓGICOS) DISPOSICIÓN DE RESIDUOS SÓLIDOS',
@@ -18,6 +20,30 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
     provider: 'TECSUP',
     deadline: '13/03/2026',
   );
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStatus();
+  }
+
+  Future<void> _loadStatus() async {
+    final signed = await OfflineWorkflowService.instance
+        .trainingWasSigned('194076_1_2026-02-01');
+    if (mounted) setState(() => _signed = signed);
+  }
+
+  Future<void> _openTraining() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const TrainingDetailPage(training: _course),
+      ),
+    );
+    if (result == true) {
+      setState(() => _signed = true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,9 +65,9 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (value) => setState(() => _index = value),
-        destinations: const [
-          NavigationDestination(icon: Badge(label: Text('1'), child: Icon(Icons.pending_actions_outlined)), selectedIcon: Icon(Icons.pending_actions), label: 'Pendientes'),
-          NavigationDestination(icon: Icon(Icons.history_outlined), selectedIcon: Icon(Icons.history), label: 'Historial'),
+        destinations: [
+          NavigationDestination(icon: Badge(label: const Text('1'), isLabelVisible: !_signed, child: const Icon(Icons.pending_actions_outlined)), selectedIcon: const Icon(Icons.pending_actions), label: 'Pendientes'),
+          const NavigationDestination(icon: Icon(Icons.history_outlined), selectedIcon: Icon(Icons.history), label: 'Historial'),
         ],
       ),
     );
@@ -60,14 +86,25 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
 
   Widget _pending(BuildContext context) => ListView(children: [
     _header('Capacitaciones pendientes', 'Confirma tu participación y firma antes del vencimiento.'),
-    Padding(
+    if (_signed)
+      const Padding(
+        padding: EdgeInsets.all(28),
+        child: Column(children: [
+          Icon(Icons.task_alt, size: 72, color: Color(0xFF16743B)),
+          SizedBox(height: 14),
+          Text('No tienes firmas pendientes', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+          SizedBox(height: 6),
+          Text('Tu firma quedó guardada localmente y está pendiente de sincronización.', textAlign: TextAlign.center),
+        ]),
+      )
+    else Padding(
       padding: const EdgeInsets.all(16),
       child: Card(
         elevation: 0,
         color: Colors.white,
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TrainingDetailPage(training: _course))),
+          onTap: _openTraining,
           child: Padding(
             padding: const EdgeInsets.all(18),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -93,6 +130,20 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
 
   Widget _history(BuildContext context) => ListView(children: [
     _header('Mi historial', 'Consulta las capacitaciones que ya confirmaste.'),
+    if (_signed)
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+        child: Card(
+          elevation: 0,
+          color: Colors.white,
+          child: ListTile(
+            contentPadding: const EdgeInsets.all(18),
+            leading: const CircleAvatar(backgroundColor: Color(0xFFFFF2CC), child: Icon(Icons.cloud_off, color: Color(0xFF9A5D00))),
+            title: Text(_course.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: const Text('01/02/2026 • Guardado sin conexión'),
+          ),
+        ),
+      ),
     const Padding(
       padding: EdgeInsets.all(16),
       child: Card(

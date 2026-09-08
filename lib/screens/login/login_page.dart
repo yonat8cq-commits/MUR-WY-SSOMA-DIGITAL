@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../routes/app_routes.dart';
+import '../../services/offline_workflow_service.dart';
+import '../onboarding/change_password_page.dart';
+import '../onboarding/consent_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -13,6 +16,7 @@ class _LoginPageState extends State<LoginPage> {
   final _dniController = TextEditingController(text: '44045773');
   final _passwordController = TextEditingController(text: 'MurWy2026');
   bool _obscurePassword = true;
+  bool _loading = false;
 
   @override
   void dispose() {
@@ -21,9 +25,29 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _login() {
+  Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-    Navigator.pushReplacementNamed(context, AppRoutes.workerHome);
+    setState(() => _loading = true);
+    final dni = _dniController.text;
+    final workflow = OfflineWorkflowService.instance;
+    await workflow.openSession(dni);
+    final changed = await workflow.passwordWasChanged(dni);
+    final consented = await workflow.consentWasAccepted(dni);
+    if (!mounted) return;
+
+    if (!changed) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => ChangePasswordPage(dni: dni)),
+      );
+    } else if (!consented) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => ConsentPage(dni: dni)),
+      );
+    } else {
+      Navigator.pushReplacementNamed(context, AppRoutes.workerHome);
+    }
   }
 
   @override
@@ -77,7 +101,10 @@ class _LoginPageState extends State<LoginPage> {
                           onFieldSubmitted: (_) => _login(),
                         ),
                         const SizedBox(height: 22),
-                        ElevatedButton(onPressed: _login, child: const Text('INGRESAR')),
+                        ElevatedButton(
+                          onPressed: _loading ? null : _login,
+                          child: Text(_loading ? 'VALIDANDO…' : 'INGRESAR'),
+                        ),
                         TextButton(onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Solicita a SSOMA el restablecimiento de tu contraseña.'))), child: const Text('¿Olvidaste tu contraseña?')),
                         const SizedBox(height: 12),
                         const Text('Versión de prueba • Los accesos reales serán creados por el administrador SSOMA.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Color(0xFF7B8492))),
