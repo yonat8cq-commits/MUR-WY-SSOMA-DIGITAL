@@ -59,19 +59,57 @@ jobs:
             -Ptrack-widget-creation=true \
             -Ptree-shake-icons=true
 
-      - name: Normalize APK output
+      - name: Sign test APK
+        shell: bash
         run: |
-          APK_SOURCE="android/app/build/outputs/flutter-apk/app-release.apk"
-          APK_TARGET="build/app/outputs/flutter-apk/app-release.apk"
+          set -euo pipefail
 
-          if [ ! -s "$APK_SOURCE" ]; then
-            echo "Release APK was not found at $APK_SOURCE"
+          UNSIGNED_APK="android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          SIGNED_APK="build/app/outputs/flutter-apk/app-release.apk"
+          ALIGNED_APK="${RUNNER_TEMP}/app-release-aligned.apk"
+          KEYSTORE="${RUNNER_TEMP}/mur-wy-test.jks"
+          KEY_ALIAS="mur-wy-test"
+          KEY_PASSWORD="$(openssl rand -hex 16)"
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          BUILD_TOOLS_DIR="$(find "${SDK_ROOT}/build-tools" -mindepth 2 -maxdepth 2 -type f -name apksigner -printf '%h\n' | sort -V | tail -1)"
+
+          if [ ! -s "${UNSIGNED_APK}" ]; then
+            echo "Unsigned release APK was not found at ${UNSIGNED_APK}"
             find android/app/build/outputs -name "*.apk" -type f -print || true
             exit 1
           fi
 
-          mkdir -p "$(dirname "$APK_TARGET")"
-          cp "$APK_SOURCE" "$APK_TARGET"
+          if [ -z "${BUILD_TOOLS_DIR}" ]; then
+            echo "Android SDK Build Tools with apksigner were not found"
+            exit 1
+          fi
+
+          mkdir -p "$(dirname "${SIGNED_APK}")"
+
+          keytool -genkeypair \
+            -keystore "${KEYSTORE}" \
+            -storepass "${KEY_PASSWORD}" \
+            -keypass "${KEY_PASSWORD}" \
+            -alias "${KEY_ALIAS}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 3650 \
+            -dname "CN=MUR WY SSOMA Test, OU=SSOMA, O=MUR WY, C=PE"
+
+          "${BUILD_TOOLS_DIR}/zipalign" -f 4 "${UNSIGNED_APK}" "${ALIGNED_APK}"
+
+          "${BUILD_TOOLS_DIR}/apksigner" sign \
+            --ks "${KEYSTORE}" \
+            --ks-key-alias "${KEY_ALIAS}" \
+            --ks-pass "pass:${KEY_PASSWORD}" \
+            --key-pass "pass:${KEY_PASSWORD}" \
+            --out "${SIGNED_APK}" \
+            "${ALIGNED_APK}"
+
+          "${BUILD_TOOLS_DIR}/apksigner" verify \
+            --verbose \
+            --print-certs \
+            "${SIGNED_APK}"
 
       - name: Verify APK
         run: |
@@ -82,6 +120,6 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MUR-WY-SSOMA-DIGITAL-APK
+          name: MUR-WY-SSOMA-DIGITAL-APK-INSTALABLE
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
