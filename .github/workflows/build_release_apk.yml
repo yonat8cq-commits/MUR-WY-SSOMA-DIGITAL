@@ -30,32 +30,58 @@ jobs:
         run: |
           flutter clean
           rm -rf android/.gradle
-          rm -rf ~/.gradle/caches
 
       - name: Flutter dependencies
         run: flutter pub get
 
-      - name: Validate Gradle Wrapper
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew --version
+      - name: Setup Gradle 8.7
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.7'
+
+      - name: Validate Gradle
+        run: gradle --version
 
       - name: Analyze project
         run: flutter analyze --no-fatal-warnings
 
       - name: Build release APK
+        working-directory: android
         run: |
-          flutter build apk --release --verbose
+          gradle app:assembleRelease \
+            --no-daemon \
+            --stacktrace \
+            --console=plain \
+            -Ptarget-platform=android-arm,android-arm64,android-x64 \
+            -Ptarget=lib/main.dart \
+            -Pbase-application-name=android.app.Application \
+            -Pdart-obfuscation=false \
+            -Ptrack-widget-creation=true \
+            -Ptree-shake-icons=true
+
+      - name: Normalize APK output
+        run: |
+          APK_SOURCE="android/app/build/outputs/flutter-apk/app-release.apk"
+          APK_TARGET="build/app/outputs/flutter-apk/app-release.apk"
+
+          if [ ! -s "$APK_SOURCE" ]; then
+            echo "Release APK was not found at $APK_SOURCE"
+            find android/app/build/outputs -name "*.apk" -type f -print || true
+            exit 1
+          fi
+
+          mkdir -p "$(dirname "$APK_TARGET")"
+          cp "$APK_SOURCE" "$APK_TARGET"
 
       - name: Verify APK
         run: |
-          echo "APK generated:"
-          find . -name "*.apk" -type f
+          test -s build/app/outputs/flutter-apk/app-release.apk
+          ls -lh build/app/outputs/flutter-apk/app-release.apk
+          sha256sum build/app/outputs/flutter-apk/app-release.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: MUR-WY-SSOMA-DIGITAL-APK
-          path: '**/*.apk'
+          path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
