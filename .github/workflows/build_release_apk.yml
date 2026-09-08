@@ -20,27 +20,27 @@ jobs:
           flutter-version: '3.24.0'
           channel: stable
 
-      - name: Show build environment
+      - name: Setup environment
         run: |
           flutter --version
           java -version
+          gradle --version
 
-      - name: Clean Flutter
-        run: flutter clean
+      - name: Clean project
+        run: |
+          flutter clean
+          rm -rf android/.gradle
 
       - name: Flutter dependencies
         run: flutter pub get
 
-      - name: Repair Gradle Wrapper
+      - name: Rebuild Gradle Wrapper
         run: |
           cd android
+          rm -f gradle/wrapper/gradle-wrapper.jar
+          gradle wrapper --gradle-version 8.7
           chmod +x gradlew
-          echo "Validating Gradle wrapper..."
-          if ! unzip -t gradle/wrapper/gradle-wrapper.jar >/dev/null 2>&1; then
-            echo "Invalid wrapper detected. Downloading official Gradle wrapper jar..."
-            curl -L -o gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.7.0/gradle/wrapper/gradle-wrapper.jar
-          fi
-          chmod +x gradlew
+          ./gradlew --version
 
       - name: Analyze project
         run: flutter analyze --no-fatal-warnings
@@ -49,18 +49,13 @@ jobs:
         run: |
           flutter build apk --release --verbose
 
-      - name: Inspect build output
-        if: always()
+      - name: Verify APK
         run: |
-          find . -name "*.apk" -type f || true
-          ls -R build 2>/dev/null | head -200 || true
+          find . -name "*.apk" -type f
 
       - name: Upload APK artifact
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: MUR-WY-SSOMA-DIGITAL-APK
-          path: |
-            build/**/*.apk
-            **/*.apk
-          if-no-files-found: warn
+          path: '**/*.apk'
+          if-no-files-found: error
