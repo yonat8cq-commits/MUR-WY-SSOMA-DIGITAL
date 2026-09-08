@@ -106,6 +106,15 @@ class _LoginPageState extends State<LoginPage> {
                           child: Text(_loading ? 'VALIDANDO…' : 'INGRESAR'),
                         ),
                         TextButton(onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Solicita a SSOMA el restablecimiento de tu contraseña.'))), child: const Text('¿Olvidaste tu contraseña?')),
+                        const Divider(height: 28),
+                        OutlinedButton.icon(
+                          onPressed: () => Navigator.pushReplacementNamed(
+                            context,
+                            AppRoutes.adminHome,
+                          ),
+                          icon: const Icon(Icons.admin_panel_settings_outlined),
+                          label: const Text('ACCESO ADMINISTRADOR (PRUEBA)'),
+                        ),
                         const SizedBox(height: 12),
                         const Text('Versión de prueba • Los accesos reales serán creados por el administrador SSOMA.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Color(0xFF7B8492))),
                       ],
