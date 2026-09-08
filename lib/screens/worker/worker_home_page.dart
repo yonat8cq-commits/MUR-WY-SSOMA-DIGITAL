@@ -1,0 +1,111 @@
+import 'package:flutter/material.dart';
+import 'training_detail_page.dart';
+
+class WorkerHomePage extends StatefulWidget {
+  const WorkerHomePage({super.key});
+
+  @override
+  State<WorkerHomePage> createState() => _WorkerHomePageState();
+}
+
+class _WorkerHomePageState extends State<WorkerHomePage> {
+  int _index = 0;
+
+  static const _course = TrainingViewData(
+    title: 'HIGIENE OCUPACIONAL (AGENTES FÍSICOS, QUÍMICOS, BIOLÓGICOS) DISPOSICIÓN DE RESIDUOS SÓLIDOS',
+    date: '01/02/2026',
+    hours: '2 horas',
+    provider: 'TECSUP',
+    deadline: '13/03/2026',
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('MUR WY SSOMA DIGITAL', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          Text('Portal del trabajador', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400)),
+        ]),
+        actions: [
+          IconButton(
+            tooltip: 'Cerrar sesión',
+            onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/', (_) => false),
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+      ),
+      body: _index == 0 ? _pending(context) : _history(context),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (value) => setState(() => _index = value),
+        destinations: const [
+          NavigationDestination(icon: Badge(label: Text('1'), child: Icon(Icons.pending_actions_outlined)), selectedIcon: Icon(Icons.pending_actions), label: 'Pendientes'),
+          NavigationDestination(icon: Icon(Icons.history_outlined), selectedIcon: Icon(Icons.history), label: 'Historial'),
+        ],
+      ),
+    );
+  }
+
+  Widget _header(String title, String subtitle) => Padding(
+    padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('Hola, Luis Ángel', style: TextStyle(fontSize: 14, color: Color(0xFF626B7A))),
+      const SizedBox(height: 6),
+      Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 4),
+      Text(subtitle, style: const TextStyle(color: Color(0xFF626B7A))),
+    ]),
+  );
+
+  Widget _pending(BuildContext context) => ListView(children: [
+    _header('Capacitaciones pendientes', 'Confirma tu participación y firma antes del vencimiento.'),
+    Padding(
+      padding: const EdgeInsets.all(16),
+      child: Card(
+        elevation: 0,
+        color: Colors.white,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TrainingDetailPage(training: _course))),
+          child: const Padding(
+            padding: EdgeInsets.all(18),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Chip(label: Text('PENDIENTE'), avatar: Icon(Icons.schedule, size: 18)),
+                Spacer(),
+                Text('Vence 13/03/2026', style: TextStyle(color: Color(0xFF9A5D00), fontWeight: FontWeight.w700)),
+              ]),
+              SizedBox(height: 12),
+              Text(_course.title, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+              SizedBox(height: 14),
+              Row(children: [Icon(Icons.calendar_today_outlined, size: 18), SizedBox(width: 8), Text('01/02/2026  •  2 horas')]),
+              SizedBox(height: 8),
+              Row(children: [Icon(Icons.school_outlined, size: 18), SizedBox(width: 8), Text('TECSUP')]),
+              SizedBox(height: 16),
+              Row(mainAxisAlignment: MainAxisAlignment.end, children: [Text('REVISAR Y FIRMAR', style: TextStyle(fontWeight: FontWeight.w800)), SizedBox(width: 6), Icon(Icons.arrow_forward)]),
+            ]),
+          ),
+        ),
+      ),
+    ),
+  ]);
+
+  Widget _history(BuildContext context) => ListView(children: [
+    _header('Mi historial', 'Consulta las capacitaciones que ya confirmaste.'),
+    const Padding(
+      padding: EdgeInsets.all(16),
+      child: Card(
+        elevation: 0,
+        color: Colors.white,
+        child: ListTile(
+          contentPadding: EdgeInsets.all(18),
+          leading: CircleAvatar(backgroundColor: Color(0xFFE4F5EA), child: Icon(Icons.check, color: Color(0xFF16743B))),
+          title: Text('INDUCCIÓN GENERAL DE SEGURIDAD', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text('15/01/2026 • Firmado'),
+          trailing: Icon(Icons.chevron_right),
+        ),
+      ),
+    ),
+  ]);
+}
