@@ -35,29 +35,19 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
+          echo "Validating Gradle wrapper..."
+          if ! unzip -t gradle/wrapper/gradle-wrapper.jar >/dev/null 2>&1; then
+            echo "Invalid wrapper detected. Downloading official Gradle wrapper jar..."
+            curl -L -o gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.7.0/gradle/wrapper/gradle-wrapper.jar
+          fi
+          chmod +x gradlew
 
       - name: Analyze project
         run: flutter analyze --no-fatal-warnings
 
       - name: Build release APK
         run: |
-          set +e
           flutter build apk --release --verbose
-          BUILD_STATUS=$?
-          set -e
-
-          echo "Flutter build exit code: $BUILD_STATUS"
-          echo "Searching APK files..."
-          find . -name "*.apk" -type f || true
-
-          if ! find . -name "*.apk" -type f | grep -q apk; then
-            echo "No APK found. Running Gradle assembleRelease directly..."
-            cd android
-            ./gradlew assembleRelease --stacktrace
-            cd ..
-          fi
-
-          find . -name "*.apk" -type f
 
       - name: Inspect build output
         if: always()
