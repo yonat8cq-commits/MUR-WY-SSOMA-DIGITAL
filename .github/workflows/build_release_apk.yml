@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - main
+      - codex/mvp-trabajador-fase-1
 
 jobs:
   build-apk:
