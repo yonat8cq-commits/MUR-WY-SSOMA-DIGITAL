@@ -68,22 +68,22 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TrainingDetailPage(training: _course))),
-          child: const Padding(
-            padding: EdgeInsets.all(18),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
+              const Row(children: [
                 Chip(label: Text('PENDIENTE'), avatar: Icon(Icons.schedule, size: 18)),
                 Spacer(),
                 Text('Vence 13/03/2026', style: TextStyle(color: Color(0xFF9A5D00), fontWeight: FontWeight.w700)),
               ]),
-              SizedBox(height: 12),
-              Text(_course.title, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-              SizedBox(height: 14),
-              Row(children: [Icon(Icons.calendar_today_outlined, size: 18), SizedBox(width: 8), Text('01/02/2026  •  2 horas')]),
-              SizedBox(height: 8),
-              Row(children: [Icon(Icons.school_outlined, size: 18), SizedBox(width: 8), Text('TECSUP')]),
-              SizedBox(height: 16),
-              Row(mainAxisAlignment: MainAxisAlignment.end, children: [Text('REVISAR Y FIRMAR', style: TextStyle(fontWeight: FontWeight.w800)), SizedBox(width: 6), Icon(Icons.arrow_forward)]),
+              const SizedBox(height: 12),
+              Text(_course.title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 14),
+              const Row(children: [Icon(Icons.calendar_today_outlined, size: 18), SizedBox(width: 8), Text('01/02/2026  •  2 horas')]),
+              const SizedBox(height: 8),
+              const Row(children: [Icon(Icons.school_outlined, size: 18), SizedBox(width: 8), Text('TECSUP')]),
+              const SizedBox(height: 16),
+              const Row(mainAxisAlignment: MainAxisAlignment.end, children: [Text('REVISAR Y FIRMAR', style: TextStyle(fontWeight: FontWeight.w800)), SizedBox(width: 6), Icon(Icons.arrow_forward)]),
             ]),
           ),
         ),
