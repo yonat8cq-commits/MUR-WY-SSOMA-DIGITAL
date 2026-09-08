@@ -20,25 +20,24 @@ jobs:
           flutter-version: '3.24.0'
           channel: stable
 
-      - name: Setup environment
-        run: |
-          flutter --version
-          java -version
-          gradle --version
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
       - name: Clean project
         run: |
           flutter clean
           rm -rf android/.gradle
+          rm -rf ~/.gradle/caches
 
       - name: Flutter dependencies
         run: flutter pub get
 
-      - name: Rebuild Gradle Wrapper
+      - name: Validate Gradle Wrapper
         run: |
           cd android
-          rm -f gradle/wrapper/gradle-wrapper.jar
-          gradle wrapper --gradle-version 8.7
           chmod +x gradlew
           ./gradlew --version
 
@@ -51,6 +50,7 @@ jobs:
 
       - name: Verify APK
         run: |
+          echo "APK generated:"
           find . -name "*.apk" -type f
 
       - name: Upload APK artifact
