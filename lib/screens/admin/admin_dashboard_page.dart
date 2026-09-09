@@ -180,6 +180,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             icon: const Icon(Icons.inventory_2_outlined),
             label: const Text('ARCHIVO DE CAPACITACIONES HISTÓRICAS'),
           ),
+          const SizedBox(height: 10),
+          FilledButton.icon(
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.reminders),
+            icon: const Icon(Icons.notifications_active_outlined),
+            label: const Text('VER ALERTAS Y RECORDATORIOS'),
+          ),
           const SizedBox(height: 12),
           Card(
             elevation: 0,

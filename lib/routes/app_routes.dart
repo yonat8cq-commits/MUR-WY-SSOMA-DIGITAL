@@ -8,6 +8,7 @@ import '../screens/admin/workers_admin_page.dart';
 import '../screens/admin/companies_admin_page.dart';
 import '../screens/admin/consents_admin_page.dart';
 import '../screens/admin/historical_documents_page.dart';
+import '../screens/admin/reminders_page.dart';
 
 class AppRoutes {
   static const login = '/';
@@ -19,6 +20,7 @@ class AppRoutes {
   static const companiesAdmin = '/administrador/empresas';
   static const consentsAdmin = '/administrador/consentimientos';
   static const historicalDocuments = '/administrador/archivo-historico';
+  static const reminders = '/administrador/alertas';
 
   static final Map<String, WidgetBuilder> routes = {
     login: (_) => const LoginPage(),
@@ -30,5 +32,6 @@ class AppRoutes {
     companiesAdmin: (_) => const CompaniesAdminPage(),
     consentsAdmin: (_) => const ConsentsAdminPage(),
     historicalDocuments: (_) => const HistoricalDocumentsPage(),
+    reminders: (_) => const RemindersPage(),
   };
 }
