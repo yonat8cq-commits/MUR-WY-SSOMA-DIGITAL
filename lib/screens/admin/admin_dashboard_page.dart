@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:file_selector/file_selector.dart';
 import '../../routes/app_routes.dart';
 import '../../services/excel_service.dart';
 
@@ -11,12 +12,57 @@ class AdminDashboardPage extends StatefulWidget {
 
 class _AdminDashboardPageState extends State<AdminDashboardPage> {
   TecsupImportResult? _result;
+  String? _selectedFileName;
+  bool _loading = false;
 
-  void _loadReferenceImport() {
-    setState(() => _result = TecsupImportResult.referencePreview());
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Vista de validación TECSUP cargada correctamente.'),
+  Future<void> _selectAndProcessExcel() async {
+    const typeGroup = XTypeGroup(
+      label: 'Archivos Excel',
+      extensions: ['xlsx'],
+      mimeTypes: [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ],
+    );
+    final file = await openFile(acceptedTypeGroups: [typeGroup]);
+    if (file == null) return;
+
+    setState(() => _loading = true);
+    try {
+      final bytes = await file.readAsBytes();
+      final result = ExcelService().importTecsup(bytes);
+      if (!mounted) return;
+      setState(() {
+        _result = result;
+        _selectedFileName = file.name;
+        _loading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Excel procesado correctamente.')),
+      );
+    } on FormatException catch (error) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _showError(error.message);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _showError('No se pudo leer el archivo. Verifica que sea un Excel .xlsx válido.');
+    }
+  }
+
+  void _showError(String message) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        icon: const Icon(Icons.error_outline, color: Colors.red, size: 46),
+        title: const Text('Archivo no válido'),
+        content: Text(message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('ENTENDIDO'),
+          ),
+        ],
       ),
     );
   }
@@ -89,16 +135,26 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   ),
                   const SizedBox(height: 18),
                   ElevatedButton.icon(
-                    onPressed: _loadReferenceImport,
-                    icon: const Icon(Icons.fact_check_outlined),
-                    label: const Text('PROBAR ARCHIVO TECSUP ANALIZADO'),
+                    onPressed: _loading ? null : _selectAndProcessExcel,
+                    icon: _loading
+                        ? const SizedBox.square(
+                            dimension: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.upload_file_outlined),
+                    label: Text(
+                      _loading ? 'PROCESANDO…' : 'SELECCIONAR EXCEL TECSUP',
+                    ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'La selección de archivos externos se conectará en la '
-                    'versión Windows sin alterar la APK del trabajador.',
+                  Text(
+                    _selectedFileName == null
+                        ? 'Selecciona un archivo .xlsx. Los datos se procesan '
+                            'localmente y no se cargan a GitHub.'
+                        : 'Archivo: ' + _selectedFileName!,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: Color(0xFF626B7A)),
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF626B7A)),
                   ),
                 ],
               ),
