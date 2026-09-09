@@ -166,6 +166,13 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             icon: const Icon(Icons.business_outlined),
             label: const Text('CONFIGURAR EMPRESAS Y LOGOS'),
           ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () =>
+                Navigator.pushNamed(context, AppRoutes.consentsAdmin),
+            icon: const Icon(Icons.verified_user_outlined),
+            label: const Text('REVISAR CONSENTIMIENTOS'),
+          ),
           const SizedBox(height: 12),
           Card(
             elevation: 0,

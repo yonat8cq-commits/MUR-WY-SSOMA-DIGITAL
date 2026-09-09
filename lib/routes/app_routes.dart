@@ -6,6 +6,7 @@ import '../screens/admin/signature_tracking_page.dart';
 import '../screens/admin/authorized_signatures_page.dart';
 import '../screens/admin/workers_admin_page.dart';
 import '../screens/admin/companies_admin_page.dart';
+import '../screens/admin/consents_admin_page.dart';
 
 class AppRoutes {
   static const login = '/';
@@ -15,6 +16,7 @@ class AppRoutes {
   static const authorizedSignatures = '/administrador/firmas-autorizadas';
   static const workersAdmin = '/administrador/trabajadores';
   static const companiesAdmin = '/administrador/empresas';
+  static const consentsAdmin = '/administrador/consentimientos';
 
   static final Map<String, WidgetBuilder> routes = {
     login: (_) => const LoginPage(),
@@ -24,5 +26,6 @@ class AppRoutes {
     authorizedSignatures: (_) => const AuthorizedSignaturesPage(),
     workersAdmin: (_) => const WorkersAdminPage(),
     companiesAdmin: (_) => const CompaniesAdminPage(),
+    consentsAdmin: (_) => const ConsentsAdminPage(),
   };
 }
