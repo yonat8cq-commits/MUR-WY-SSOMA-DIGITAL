@@ -110,6 +110,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         ),
         actions: [
           IconButton(
+            tooltip: 'Seguimiento de firmas',
+            onPressed: () =>
+                Navigator.pushNamed(context, AppRoutes.signatureTracking),
+            icon: const Icon(Icons.analytics_outlined),
+          ),
+          IconButton(
             tooltip: 'Cerrar sesión',
             onPressed: () => Navigator.pushNamedAndRemoveUntil(
               context,
@@ -133,6 +139,13 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             style: TextStyle(color: Color(0xFF626B7A)),
           ),
           const SizedBox(height: 18),
+          OutlinedButton.icon(
+            onPressed: () =>
+                Navigator.pushNamed(context, AppRoutes.signatureTracking),
+            icon: const Icon(Icons.analytics_outlined),
+            label: const Text('VER SEGUIMIENTO DE FIRMAS'),
+          ),
+          const SizedBox(height: 12),
           Card(
             elevation: 0,
             color: Colors.white,
