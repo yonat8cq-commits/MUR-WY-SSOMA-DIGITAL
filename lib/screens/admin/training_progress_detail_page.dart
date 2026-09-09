@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/admin_tracking_service.dart';
+import '../../services/pdf_service.dart';
 
 enum ParticipantFilter { all, pending, signed }
 
@@ -17,6 +18,7 @@ class _TrainingProgressDetailPageState
   List<ParticipantProgress> _participants = [];
   ParticipantFilter _filter = ParticipantFilter.all;
   bool _loading = true;
+  bool _exporting = false;
 
   @override
   void initState() {
@@ -34,6 +36,24 @@ class _TrainingProgressDetailPageState
     });
   }
 
+  Future<void> _exportPdf() async {
+    setState(() => _exporting = true);
+    try {
+      final path = await PdfService().saveFsgi(widget.training.key);
+      if (!mounted || path == null) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Registro guardado en: $path')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo generar el registro: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final visible = _participants.where((participant) {
@@ -45,7 +65,22 @@ class _TrainingProgressDetailPageState
     final pending = _participants.length - signed;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Detalle de participantes')),
+      appBar: AppBar(
+        title: const Text('Detalle de participantes'),
+        actions: [
+          IconButton(
+            tooltip: 'Descargar F-SGI-04-01',
+            onPressed: _loading || _exporting ? null : _exportPdf,
+            icon: _exporting
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.picture_as_pdf_outlined),
+          ),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -82,6 +117,16 @@ class _TrainingProgressDetailPageState
                           setState(() => _filter = ParticipantFilter.signed),
                     ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: _exporting ? null : _exportPdf,
+                  icon: const Icon(Icons.download_outlined),
+                  label: Text(
+                    _exporting
+                        ? 'Generando registro...'
+                        : 'Descargar F-SGI-04-01',
+                  ),
                 ),
                 const SizedBox(height: 12),
                 ...visible.map(
