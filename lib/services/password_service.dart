@@ -7,13 +7,8 @@ import '../database/app_database.dart';
 
 class PasswordService {
   Future<void> setPassword(String dni, String password) async {
-    final random = Random.secure();
-    final saltBytes = List<int>.generate(
-      24,
-      (_) => random.nextInt(256),
-    );
-    final salt = base64UrlEncode(saltBytes);
-    final hash = _hash(password, salt);
+    final salt = CredentialHasher.generateSalt();
+    final hash = CredentialHasher.hash(password, salt);
     final db = await AppDatabase.instance.database;
     await db.update(
       'trabajadores_importados',
@@ -42,10 +37,22 @@ class PasswordService {
     final expected = rows.first['password_hash'] as String?;
     final salt = rows.first['password_salt'] as String?;
     if (expected == null || salt == null) return false;
-    return _constantTimeEquals(expected, _hash(password, salt));
+    return CredentialHasher.equals(
+      expected,
+      CredentialHasher.hash(password, salt),
+    );
+  }
+}
+
+class CredentialHasher {
+  static String generateSalt() {
+    final random = Random.secure();
+    return base64UrlEncode(
+      List<int>.generate(24, (_) => random.nextInt(256)),
+    );
   }
 
-  String _hash(String password, String salt) {
+  static String hash(String password, String salt) {
     List<int> value = utf8.encode('$salt:$password');
     for (var round = 0; round < 20000; round++) {
       value = sha256.convert(value).bytes;
@@ -53,7 +60,7 @@ class PasswordService {
     return base64UrlEncode(value);
   }
 
-  bool _constantTimeEquals(String expected, String actual) {
+  static bool equals(String expected, String actual) {
     if (expected.length != actual.length) return false;
     var difference = 0;
     for (var index = 0; index < expected.length; index++) {

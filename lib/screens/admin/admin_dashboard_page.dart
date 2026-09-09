@@ -5,6 +5,7 @@ import '../../services/excel_service.dart';
 import '../../services/import_persistence_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/reminder_service.dart';
+import '../../services/admin_auth_service.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -19,11 +20,35 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   bool _loading = false;
   bool _saving = false;
   ImportSaveSummary? _saveSummary;
+  bool _checkingAccess = true;
 
   @override
   void initState() {
     super.initState();
-    _showAndroidReminders();
+    _verifyAccess();
+  }
+
+  Future<void> _verifyAccess() async {
+    if (!AdminAuthService().sessionAuthorized) {
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.adminAuth,
+        (route) => route.settings.name == AppRoutes.login,
+      );
+      return;
+    }
+    setState(() => _checkingAccess = false);
+    await _showAndroidReminders();
+  }
+
+  void _logout() {
+    AdminAuthService().logout();
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.login,
+      (_) => false,
+    );
   }
 
   Future<void> _showAndroidReminders() async {
@@ -110,6 +135,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_checkingAccess) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     final result = _result;
     return Scaffold(
       appBar: AppBar(
@@ -130,11 +158,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           ),
           IconButton(
             tooltip: 'Cerrar sesión',
-            onPressed: () => Navigator.pushNamedAndRemoveUntil(
-              context,
-              AppRoutes.login,
-              (_) => false,
-            ),
+            onPressed: _logout,
             icon: const Icon(Icons.logout),
           ),
         ],

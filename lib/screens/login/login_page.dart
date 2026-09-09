@@ -177,10 +177,10 @@ class _LoginPageState extends State<LoginPage> {
                         OutlinedButton.icon(
                           onPressed: () => Navigator.pushReplacementNamed(
                             context,
-                            AppRoutes.adminHome,
+                            AppRoutes.adminAuth,
                           ),
                           icon: const Icon(Icons.admin_panel_settings_outlined),
-                          label: const Text('ACCESO ADMINISTRADOR (PRUEBA)'),
+                          label: const Text('ACCESO SUPER ADMINISTRADOR'),
                         ),
                         const SizedBox(height: 12),
                         const Text('Versión de prueba • Los accesos reales serán creados por el administrador SSOMA.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Color(0xFF7B8492))),
