@@ -1,8 +1,6 @@
 import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
-import 'package:sqflite/sqflite.dart';
-
 import '../database/app_database.dart';
 
 class HistoricalDocument {
