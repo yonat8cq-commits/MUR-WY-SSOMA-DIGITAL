@@ -73,6 +73,12 @@ class OfflineWorkflowService {
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+    await db.update(
+      'participantes_capacitacion',
+      {'signature_status': 'FIRMADO'},
+      where: 'training_key = ? AND dni = ?',
+      whereArgs: [trainingKey, dni],
+    );
   }
 
   Future<String?> _get(String key) async {

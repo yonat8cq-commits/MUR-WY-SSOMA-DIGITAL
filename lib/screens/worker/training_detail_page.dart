@@ -4,13 +4,21 @@ import 'package:signature/signature.dart';
 import '../../services/offline_workflow_service.dart';
 
 class TrainingViewData {
+  final String key;
   final String title;
   final String date;
   final String hours;
   final String provider;
   final String deadline;
 
-  const TrainingViewData({required this.title, required this.date, required this.hours, required this.provider, required this.deadline});
+  const TrainingViewData({
+    required this.key,
+    required this.title,
+    required this.date,
+    required this.hours,
+    required this.provider,
+    required this.deadline,
+  });
 }
 
 class TrainingDetailPage extends StatefulWidget {
@@ -51,7 +59,7 @@ class _TrainingDetailPageState extends State<TrainingDetailPage> {
     setState(() => _saving = false);
     if (signaturePng == null) return;
     await OfflineWorkflowService.instance.saveTrainingSignature(
-      '194076_1_2026-02-01',
+      widget.training.key,
       signaturePng,
     );
     if (!mounted) return;

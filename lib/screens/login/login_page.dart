@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../routes/app_routes.dart';
 import '../../services/offline_workflow_service.dart';
+import '../../services/worker_data_service.dart';
 import '../onboarding/change_password_page.dart';
 import '../onboarding/consent_page.dart';
 
@@ -29,6 +30,21 @@ class _LoginPageState extends State<LoginPage> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     final dni = _dniController.text;
+    final workerData = WorkerDataService();
+    final hasWorkers = await workerData.hasImportedWorkers();
+    final workerExists = await workerData.workerExists(dni);
+    if (hasWorkers && !workerExists) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'El DNI no está registrado en las capacitaciones importadas.',
+          ),
+        ),
+      );
+      return;
+    }
     final workflow = OfflineWorkflowService.instance;
     await workflow.openSession(dni);
     final changed = await workflow.passwordWasChanged(dni);
