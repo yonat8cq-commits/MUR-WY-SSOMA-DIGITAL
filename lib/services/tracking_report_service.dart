@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:excel/excel.dart';
 import 'package:file_selector/file_selector.dart';
 
@@ -28,7 +30,7 @@ class TrackingReportService {
     );
     if (location == null) return null;
     final file = XFile.fromData(
-      bytes,
+      Uint8List.fromList(bytes),
       mimeType:
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       name: location.path.split('/').last,
