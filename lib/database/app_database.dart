@@ -20,7 +20,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE trabajadores (
@@ -52,10 +52,14 @@ class AppDatabase {
         ''');
 
         await _createOfflineTables(db);
+        await _createImportTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await _createOfflineTables(db);
+        }
+        if (oldVersion < 3) {
+          await _createImportTables(db);
         }
       },
     );
@@ -88,6 +92,53 @@ class AppDatabase {
         confirmed_at TEXT NOT NULL,
         signature_png BLOB NOT NULL,
         sync_status INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+  }
+
+  Future<void> _createImportTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS importaciones_tecsup (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        file_name TEXT NOT NULL,
+        imported_at TEXT NOT NULL,
+        total_rows INTEGER NOT NULL,
+        approved_rows INTEGER NOT NULL,
+        excluded_rows INTEGER NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS trabajadores_importados (
+        dni TEXT PRIMARY KEY,
+        full_name TEXT NOT NULL,
+        company TEXT,
+        area TEXT,
+        position TEXT,
+        account_status TEXT NOT NULL DEFAULT 'TEMPORAL',
+        requires_password_change INTEGER NOT NULL DEFAULT 1,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS capacitaciones_importadas (
+        training_key TEXT PRIMARY KEY,
+        course TEXT NOT NULL,
+        training_date TEXT NOT NULL,
+        approved_participants INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'BORRADOR',
+        updated_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS participantes_capacitacion (
+        training_key TEXT NOT NULL,
+        dni TEXT NOT NULL,
+        signature_status TEXT NOT NULL DEFAULT 'PENDIENTE',
+        assigned_at TEXT NOT NULL,
+        PRIMARY KEY (training_key, dni)
       )
     ''');
   }

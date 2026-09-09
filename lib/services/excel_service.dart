@@ -7,6 +7,7 @@ class TecsupImportResult {
   final int excludedRows;
   final int uniqueWorkers;
   final List<ImportedTraining> trainings;
+  final List<ImportedParticipant> participants;
   final List<String> warnings;
 
   const TecsupImportResult({
@@ -15,6 +16,7 @@ class TecsupImportResult {
     required this.excludedRows,
     required this.uniqueWorkers,
     required this.trainings,
+    required this.participants,
     required this.warnings,
   });
 
@@ -38,11 +40,30 @@ class TecsupImportResult {
             approvedParticipants: 230,
           ),
         ],
+        participants: [],
         warnings: [
           'DNI 41704699 aparece duplicado en el padrón de personal.',
           '7 aprobados no están en el padrón y crearán una cuenta nueva.',
         ],
       );
+}
+
+class ImportedParticipant {
+  final String trainingKey;
+  final String dni;
+  final String fullName;
+  final String company;
+  final String area;
+  final String position;
+
+  const ImportedParticipant({
+    required this.trainingKey,
+    required this.dni,
+    required this.fullName,
+    required this.company,
+    required this.area,
+    required this.position,
+  });
 }
 
 class ImportedTraining {
@@ -97,6 +118,7 @@ class ExcelService {
     var approved = 0;
     final workers = <String>{};
     final grouped = <String, _TrainingAccumulator>{};
+    final participants = <ImportedParticipant>[];
     final warnings = <String>[];
 
     for (final row in sheet.rows.skip(1)) {
@@ -108,7 +130,8 @@ class ExcelService {
       final status = _normalize(_read(row, headers, 'ESTADO'));
       if (status != 'APROBADO') continue;
       approved++;
-      workers.add(dni.padLeft(8, '0'));
+      final normalizedDni = dni.padLeft(8, '0');
+      workers.add(normalizedDni);
 
       final date = _read(row, headers, 'FECHA DE CURSO');
       final programId = _read(row, headers, 'ID PROGRAMACION');
@@ -118,7 +141,17 @@ class ExcelService {
         key,
         () => _TrainingAccumulator(key: key, course: course, date: date),
       );
-      grouped[key]!.participants.add(dni);
+      grouped[key]!.participants.add(normalizedDni);
+      participants.add(
+        ImportedParticipant(
+          trainingKey: key,
+          dni: normalizedDni,
+          fullName: _read(row, headers, 'NOMBRE COMPLETO'),
+          company: _readOptional(row, headers, 'EMPRESA INSCRIBIO'),
+          area: _readOptional(row, headers, 'AREA'),
+          position: _readOptional(row, headers, 'CARGO'),
+        ),
+      );
     }
 
     if (total == 0) warnings.add('El archivo no contiene registros de personal.');
@@ -144,8 +177,19 @@ class ExcelService {
       excludedRows: total - approved,
       uniqueWorkers: workers.length,
       trainings: trainings,
+      participants: participants,
       warnings: warnings,
     );
+  }
+
+  String _readOptional(
+    List<Data?> row,
+    Map<String, int> headers,
+    String header,
+  ) {
+    final index = headers[header];
+    if (index == null || index >= row.length) return '';
+    return _text(row[index]?.value);
   }
 
   String _read(

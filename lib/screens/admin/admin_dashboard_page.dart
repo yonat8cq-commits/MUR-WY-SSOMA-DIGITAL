@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:file_selector/file_selector.dart';
 import '../../routes/app_routes.dart';
 import '../../services/excel_service.dart';
+import '../../services/import_persistence_service.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -14,6 +15,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   TecsupImportResult? _result;
   String? _selectedFileName;
   bool _loading = false;
+  bool _saving = false;
+  ImportSaveSummary? _saveSummary;
 
   Future<void> _selectAndProcessExcel() async {
     const typeGroup = XTypeGroup(
@@ -34,6 +37,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       setState(() {
         _result = result;
         _selectedFileName = file.name;
+        _saveSummary = null;
         _loading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -47,6 +51,30 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       if (!mounted) return;
       setState(() => _loading = false);
       _showError('No se pudo leer el archivo. Verifica que sea un Excel .xlsx válido.');
+    }
+  }
+
+  Future<void> _saveImport() async {
+    final result = _result;
+    final fileName = _selectedFileName;
+    if (result == null || fileName == null) return;
+    setState(() => _saving = true);
+    try {
+      final summary = await ImportPersistenceService().save(result, fileName);
+      if (!mounted) return;
+      setState(() {
+        _saveSummary = summary;
+        _saving = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Importación guardada y cuentas preparadas.'),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      _showError('No se pudo guardar la importación en este dispositivo.');
     }
   }
 
@@ -229,6 +257,59 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 ),
               ),
             ],
+            const SizedBox(height: 18),
+            if (_saveSummary == null)
+              ElevatedButton.icon(
+                onPressed: _saving ? null : _saveImport,
+                icon: _saving
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save_alt_outlined),
+                label: Text(
+                  _saving
+                      ? 'GUARDANDO…'
+                      : 'CONFIRMAR IMPORTACIÓN Y CREAR CUENTAS',
+                ),
+              )
+            else
+              Card(
+                elevation: 0,
+                color: const Color(0xFFE4F5EA),
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.verified,
+                          color: Color(0xFF16743B), size: 46),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Importación guardada',
+                        style: TextStyle(
+                            fontSize: 19, fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _saveSummary!.workers.toString() +
+                            ' trabajadores • ' +
+                            _saveSummary!.trainings.toString() +
+                            ' capacitaciones • ' +
+                            _saveSummary!.assignments.toString() +
+                            ' asignaciones',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Las cuentas quedan en estado TEMPORAL y deberán '
+                        'cambiar contraseña en el primer acceso.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Color(0xFF3D6248)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ],
       ),
