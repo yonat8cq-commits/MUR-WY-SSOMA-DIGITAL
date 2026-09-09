@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/admin_tracking_service.dart';
+import '../../services/authorized_signature_service.dart';
 import '../../services/pdf_service.dart';
 
 enum ParticipantFilter { all, pending, signed }
@@ -19,6 +20,8 @@ class _TrainingProgressDetailPageState
   ParticipantFilter _filter = ParticipantFilter.all;
   bool _loading = true;
   bool _exporting = false;
+  List<AuthorizedSigner> _trainers = [];
+  String? _trainerId;
 
   @override
   void initState() {
@@ -27,13 +30,32 @@ class _TrainingProgressDetailPageState
   }
 
   Future<void> _load() async {
-    final rows =
-        await AdminTrackingService().loadParticipants(widget.training.key);
+    final rows = await AdminTrackingService().loadParticipants(
+      widget.training.key,
+    );
+    final signatureService = AuthorizedSignatureService();
+    final trainers = await signatureService.loadTrainers();
+    final trainerId = await signatureService.trainerIdFor(widget.training.key);
     if (!mounted) return;
     setState(() {
       _participants = rows;
+      _trainers = trainers;
+      _trainerId = trainerId;
       _loading = false;
     });
+  }
+
+  Future<void> _assignTrainer(String? trainerId) async {
+    if (trainerId == null) return;
+    await AuthorizedSignatureService().assignTrainer(
+      widget.training.key,
+      trainerId,
+    );
+    if (!mounted) return;
+    setState(() => _trainerId = trainerId);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Capacitador asignado al registro.')),
+    );
   }
 
   Future<void> _exportPdf() async {
@@ -117,6 +139,30 @@ class _TrainingProgressDetailPageState
                           setState(() => _filter = ParticipantFilter.signed),
                     ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _trainerId,
+                  decoration: const InputDecoration(
+                    labelText: 'Capacitador del registro',
+                    prefixIcon: Icon(Icons.person_outline),
+                    border: OutlineInputBorder(),
+                  ),
+                  hint: const Text('Selecciona a Roly o Karina'),
+                  items: _trainers
+                      .map(
+                        (trainer) => DropdownMenuItem(
+                          value: trainer.id,
+                          child: Text(trainer.fullName),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _assignTrainer,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Responsable: CUTIPA QUISPE JHONATHAN - ASISTENTE SSOMA',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF626B7A)),
                 ),
                 const SizedBox(height: 12),
                 FilledButton.icon(

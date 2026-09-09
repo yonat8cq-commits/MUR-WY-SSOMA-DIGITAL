@@ -5,6 +5,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../database/app_database.dart';
+import 'authorized_signature_service.dart';
 
 class FsgiParticipant {
   final String dni;
@@ -28,11 +29,15 @@ class FsgiRecord {
   final String course;
   final String date;
   final List<FsgiParticipant> participants;
+  final AuthorizedSigner? trainer;
+  final AuthorizedSigner? responsible;
 
   const FsgiRecord({
     required this.course,
     required this.date,
     required this.participants,
+    required this.trainer,
+    required this.responsible,
   });
 }
 
@@ -64,6 +69,10 @@ class PdfService {
       ''',
       [trainingKey],
     );
+    final signatureService = AuthorizedSignatureService();
+    final trainerId = await signatureService.trainerIdFor(trainingKey);
+    final trainer = await signatureService.loadSigner(trainerId);
+    final responsible = await signatureService.loadSigner('jhonathan');
     return FsgiRecord(
       course: trainingRows.first['course'] as String? ?? '',
       date: trainingRows.first['training_date'] as String? ?? '',
@@ -79,6 +88,8 @@ class PdfService {
             ),
           )
           .toList(),
+      trainer: trainer,
+      responsible: responsible,
     );
   }
 
@@ -222,11 +233,7 @@ class PdfService {
                   bold: true,
                   align: pw.Alignment.centerLeft,
                 ),
-                _cell(
-                  'TEMA: ${record.course}\n\nEXPOSITOR: ___________________________     FIRMA: ____________________\n\nCARGO: ______________________________     FECHA: ${record.date}\n\nEMPRESA: MUR WY S.A.C.                       N° HORAS: __________',
-                  height: 77,
-                  align: pw.Alignment.centerLeft,
-                ),
+                _trainingData(record),
               ],
             ),
           ],
@@ -312,6 +319,87 @@ class PdfService {
       child: pw.Image(
         pw.MemoryImage(participant.signaturePng!),
         fit: pw.BoxFit.contain,
+      ),
+    );
+  }
+
+  pw.Widget _trainingData(FsgiRecord record) {
+    final trainer = record.trainer;
+    return pw.Container(
+      height: 77,
+      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(
+            'TEMA: ${record.course}',
+            style: pw.TextStyle(fontSize: 6, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.Row(
+            children: [
+              pw.Expanded(
+                child: pw.Text(
+                  'EXPOSITOR: ${trainer?.fullName ?? 'NO ASIGNADO'}',
+                  style: const pw.TextStyle(fontSize: 5.5),
+                ),
+              ),
+              pw.SizedBox(
+                width: 105,
+                height: 27,
+                child: trainer?.signaturePng == null
+                    ? pw.Center(
+                        child: pw.Text(
+                          'FIRMA NO CARGADA',
+                          style: const pw.TextStyle(
+                            fontSize: 5,
+                            color: PdfColors.grey700,
+                          ),
+                        ),
+                      )
+                    : pw.Image(
+                        pw.MemoryImage(trainer!.signaturePng!),
+                        fit: pw.BoxFit.contain,
+                      ),
+              ),
+            ],
+          ),
+          pw.Text(
+            'CARGO: ${trainer?.position ?? ''}        FECHA: ${record.date}',
+            style: const pw.TextStyle(fontSize: 5.5),
+          ),
+          pw.Text(
+            'EMPRESA: MUR WY S.A.C.        N° HORAS: __________',
+            style: const pw.TextStyle(fontSize: 5.5),
+          ),
+          pw.Row(
+            children: [
+              pw.Expanded(
+                child: pw.Text(
+                  'RESPONSABLE: ${record.responsible?.fullName ?? 'CUTIPA QUISPE JHONATHAN'} - ${record.responsible?.position ?? 'ASISTENTE SSOMA'}',
+                  style: const pw.TextStyle(fontSize: 5),
+                ),
+              ),
+              pw.SizedBox(
+                width: 72,
+                height: 14,
+                child: record.responsible?.signaturePng == null
+                    ? pw.Text(
+                        'FIRMA NO CARGADA',
+                        textAlign: pw.TextAlign.center,
+                        style: const pw.TextStyle(
+                          fontSize: 4.5,
+                          color: PdfColors.grey700,
+                        ),
+                      )
+                    : pw.Image(
+                        pw.MemoryImage(record.responsible!.signaturePng!),
+                        fit: pw.BoxFit.contain,
+                      ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

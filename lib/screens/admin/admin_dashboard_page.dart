@@ -145,6 +145,13 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             icon: const Icon(Icons.analytics_outlined),
             label: const Text('VER SEGUIMIENTO DE FIRMAS'),
           ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () =>
+                Navigator.pushNamed(context, AppRoutes.authorizedSignatures),
+            icon: const Icon(Icons.draw_outlined),
+            label: const Text('CONFIGURAR FIRMAS AUTORIZADAS'),
+          ),
           const SizedBox(height: 12),
           Card(
             elevation: 0,

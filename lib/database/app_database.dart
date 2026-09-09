@@ -20,7 +20,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE trabajadores (
@@ -53,6 +53,7 @@ class AppDatabase {
 
         await _createOfflineTables(db);
         await _createImportTables(db);
+        await _createAuthorizedSignatureTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -60,6 +61,9 @@ class AppDatabase {
         }
         if (oldVersion < 3) {
           await _createImportTables(db);
+        }
+        if (oldVersion < 4) {
+          await _createAuthorizedSignatureTables(db);
         }
       },
     );
@@ -141,5 +145,55 @@ class AppDatabase {
         PRIMARY KEY (training_key, dni)
       )
     ''');
+  }
+
+  Future<void> _createAuthorizedSignatureTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS firmas_autorizadas (
+        signer_id TEXT PRIMARY KEY,
+        full_name TEXT NOT NULL,
+        position TEXT NOT NULL,
+        signer_role TEXT NOT NULL,
+        signature_png BLOB,
+        active INTEGER NOT NULL DEFAULT 1,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS firmantes_capacitacion (
+        training_key TEXT PRIMARY KEY,
+        trainer_id TEXT,
+        responsible_id TEXT NOT NULL DEFAULT 'jhonathan',
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    final now = DateTime.now().toUtc().toIso8601String();
+    final defaults = [
+      {
+        'signer_id': 'roly',
+        'full_name': 'ROLY QUISPE TURPO',
+        'position': 'SUPERVISOR SSOMA',
+        'signer_role': 'CAPACITADOR',
+      },
+      {
+        'signer_id': 'karina',
+        'full_name': 'KARINA HERMOSA CASTILLO CORDOVA',
+        'position': 'SUPERVISOR SSOMA',
+        'signer_role': 'CAPACITADOR',
+      },
+      {
+        'signer_id': 'jhonathan',
+        'full_name': 'CUTIPA QUISPE JHONATHAN',
+        'position': 'ASISTENTE SSOMA',
+        'signer_role': 'RESPONSABLE',
+      },
+    ];
+    for (final signer in defaults) {
+      await db.insert(
+        'firmas_autorizadas',
+        {...signer, 'updated_at': now},
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+    }
   }
 }
