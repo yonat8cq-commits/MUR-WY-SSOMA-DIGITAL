@@ -20,7 +20,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE trabajadores (
@@ -77,7 +77,30 @@ class AppDatabase {
         if (oldVersion < 7) {
           await _createHistoricalDocumentTables(db);
         }
+        if (oldVersion < 8) {
+          await _addWorkerCredentials(db);
+        }
       },
+    );
+  }
+
+  Future<void> _addWorkerCredentials(Database db) async {
+    final columns = await db.rawQuery('PRAGMA table_info(trabajadores_importados)');
+    final names = columns.map((column) => column['name']).toSet();
+    if (!names.contains('password_hash')) {
+      await db.execute(
+        'ALTER TABLE trabajadores_importados ADD COLUMN password_hash TEXT',
+      );
+    }
+    if (!names.contains('password_salt')) {
+      await db.execute(
+        'ALTER TABLE trabajadores_importados ADD COLUMN password_salt TEXT',
+      );
+    }
+    await db.update(
+      'trabajadores_importados',
+      {'requires_password_change': 1},
+      where: 'password_hash IS NULL OR password_salt IS NULL',
     );
   }
 
@@ -149,6 +172,8 @@ class AppDatabase {
         position TEXT,
         account_status TEXT NOT NULL DEFAULT 'TEMPORAL',
         requires_password_change INTEGER NOT NULL DEFAULT 1,
+        password_hash TEXT,
+        password_salt TEXT,
         updated_at TEXT NOT NULL
       )
     ''');

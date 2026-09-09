@@ -82,6 +82,8 @@ class WorkerAdminService {
         'trabajadores_importados',
         {
           'requires_password_change': 1,
+          'password_hash': null,
+          'password_salt': null,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         },
         where: 'dni = ?',

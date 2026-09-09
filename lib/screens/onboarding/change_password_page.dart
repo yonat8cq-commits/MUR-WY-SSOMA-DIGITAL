@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../routes/app_routes.dart';
 import '../../services/offline_workflow_service.dart';
+import '../../services/password_service.dart';
 import 'consent_page.dart';
 
 class ChangePasswordPage extends StatefulWidget {
@@ -27,6 +28,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   Future<void> _continue() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
+    await PasswordService().setPassword(widget.dni, _password.text);
     await OfflineWorkflowService.instance.markPasswordChanged(widget.dni);
     if (!mounted) return;
     Navigator.pushReplacement(
