@@ -14,8 +14,20 @@ class OfflineWorkflowService {
   Future<bool> passwordWasChanged(String dni) async =>
       await _get('password_changed_$dni') == 'true';
 
-  Future<void> markPasswordChanged(String dni) =>
-      _set('password_changed_$dni', 'true');
+  Future<void> markPasswordChanged(String dni) async {
+    final db = await AppDatabase.instance.database;
+    await db.update(
+      'trabajadores_importados',
+      {
+        'requires_password_change': 0,
+        'account_status': 'ACTIVO',
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      },
+      where: 'dni = ?',
+      whereArgs: [dni],
+    );
+    await _set('password_changed_$dni', 'true');
+  }
 
   Future<bool> consentWasAccepted(String dni) async {
     final db = await AppDatabase.instance.database;

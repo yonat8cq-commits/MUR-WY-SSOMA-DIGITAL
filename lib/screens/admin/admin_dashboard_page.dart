@@ -152,6 +152,13 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             icon: const Icon(Icons.draw_outlined),
             label: const Text('CONFIGURAR FIRMAS AUTORIZADAS'),
           ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () =>
+                Navigator.pushNamed(context, AppRoutes.workersAdmin),
+            icon: const Icon(Icons.manage_accounts_outlined),
+            label: const Text('ADMINISTRAR TRABAJADORES Y ACCESOS'),
+          ),
           const SizedBox(height: 12),
           Card(
             elevation: 0,

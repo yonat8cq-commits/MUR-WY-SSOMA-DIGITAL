@@ -7,6 +7,8 @@ class WorkerProfile {
   final String company;
   final String area;
   final String position;
+  final String accountStatus;
+  final bool requiresPasswordChange;
 
   const WorkerProfile({
     required this.dni,
@@ -14,7 +16,11 @@ class WorkerProfile {
     required this.company,
     required this.area,
     required this.position,
+    required this.accountStatus,
+    required this.requiresPasswordChange,
   });
+
+  bool get active => accountStatus != 'INACTIVO';
 }
 
 class AssignedTraining {
@@ -65,6 +71,9 @@ class WorkerDataService {
       company: row['company'] as String? ?? '',
       area: row['area'] as String? ?? '',
       position: row['position'] as String? ?? '',
+      accountStatus: row['account_status'] as String? ?? 'TEMPORAL',
+      requiresPasswordChange:
+          (row['requires_password_change'] as int? ?? 1) == 1,
     );
   }
 

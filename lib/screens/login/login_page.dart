@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../routes/app_routes.dart';
 import '../../services/offline_workflow_service.dart';
 import '../../services/worker_data_service.dart';
+import '../../services/worker_admin_service.dart';
 import '../onboarding/change_password_page.dart';
 import '../onboarding/consent_page.dart';
 
@@ -32,8 +33,8 @@ class _LoginPageState extends State<LoginPage> {
     final dni = _dniController.text;
     final workerData = WorkerDataService();
     final hasWorkers = await workerData.hasImportedWorkers();
-    final workerExists = await workerData.workerExists(dni);
-    if (hasWorkers && !workerExists) {
+    final profile = await workerData.loadProfile(dni);
+    if (hasWorkers && profile == null) {
       if (!mounted) return;
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -42,6 +43,25 @@ class _LoginPageState extends State<LoginPage> {
             'El DNI no está registrado en las capacitaciones importadas.',
           ),
         ),
+      );
+      return;
+    }
+    if (profile != null && !profile.active) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('La cuenta está inactiva. Comunícate con SSOMA.'),
+        ),
+      );
+      return;
+    }
+    if (profile?.requiresPasswordChange == true &&
+        _passwordController.text != WorkerAdminService.temporaryPassword) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La contraseña temporal no es correcta.')),
       );
       return;
     }
