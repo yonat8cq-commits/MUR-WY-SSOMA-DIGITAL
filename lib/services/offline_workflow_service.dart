@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:sqflite/sqflite.dart';
 import '../database/app_database.dart';
+import 'document_control_service.dart';
 
 class OfflineWorkflowService {
   static final OfflineWorkflowService instance = OfflineWorkflowService._();
@@ -59,8 +60,28 @@ class OfflineWorkflowService {
   ) async {
     final dni = await currentDni;
     if (dni == null) throw StateError('No existe una sesión activa.');
-    final confirmedAt = DateTime.now().toUtc().toIso8601String();
     final db = await AppDatabase.instance.database;
+    final trainingRows = await db.query(
+      'capacitaciones_importadas',
+      columns: ['training_date'],
+      where: 'training_key = ?',
+      whereArgs: [trainingKey],
+      limit: 1,
+    );
+    if (trainingRows.isEmpty) {
+      throw StateError('La capacitación ya no se encuentra disponible.');
+    }
+    final control = await DocumentControlService().load(
+      trainingKey,
+      trainingRows.first['training_date'] as String? ?? '',
+    );
+    if (control.isClosed) {
+      throw StateError('El registro ya fue cerrado por SSOMA.');
+    }
+    if (control.isExpired) {
+      throw StateError('El plazo de 40 días para firmar ya venció.');
+    }
+    final confirmedAt = DateTime.now().toUtc().toIso8601String();
     await db.insert(
       'confirmaciones_capacitacion',
       {

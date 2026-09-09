@@ -50,7 +50,7 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
             date: training.date,
             hours: 'Según registro TECSUP',
             provider: 'TECSUP',
-            deadline: '40 días desde la capacitación',
+            deadline: _date(training.deadline),
           ),
         ),
       ),
@@ -204,7 +204,7 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
           color: Colors.white,
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
-            onTap: training.signed ? null : () => _openTraining(training),
+            onTap: training.canSign ? () => _openTraining(training) : null,
             child: Padding(
               padding: const EdgeInsets.all(18),
               child: Column(
@@ -215,7 +215,7 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
                       training.signed ? Icons.check_circle : Icons.schedule,
                       size: 18,
                     ),
-                    label: Text(training.signed ? 'FIRMADO' : 'PENDIENTE'),
+                    label: Text(training.status),
                   ),
                   const SizedBox(height: 10),
                   Text(training.course,
@@ -230,6 +230,14 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
                     ],
                   ),
                   const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.event_busy_outlined, size: 18),
+                      const SizedBox(width: 8),
+                      Text('Plazo: ${_date(training.deadline)}'),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   const Row(
                     children: [
                       Icon(Icons.school_outlined, size: 18),
@@ -237,7 +245,7 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
                       Text('TECSUP'),
                     ],
                   ),
-                  if (!training.signed) ...[
+                  if (training.canSign) ...[
                     const SizedBox(height: 16),
                     const Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -262,4 +270,8 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
     final parts = clean.split(',');
     return parts.length > 1 ? parts.last.trim() : clean;
   }
+
+  String _date(DateTime value) =>
+      '${value.day.toString().padLeft(2, '0')}/'
+      '${value.month.toString().padLeft(2, '0')}/${value.year}';
 }

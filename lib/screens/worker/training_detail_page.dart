@@ -58,10 +58,18 @@ class _TrainingDetailPageState extends State<TrainingDetailPage> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (signaturePng == null) return;
-    await OfflineWorkflowService.instance.saveTrainingSignature(
-      widget.training.key,
-      signaturePng,
-    );
+    try {
+      await OfflineWorkflowService.instance.saveTrainingSignature(
+        widget.training.key,
+        signaturePng,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceFirst('Bad state: ', ''))),
+      );
+      return;
+    }
     if (!mounted) return;
 
     await showDialog<void>(

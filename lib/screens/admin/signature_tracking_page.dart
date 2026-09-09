@@ -131,6 +131,12 @@ class _SignatureTrackingPageState extends State<SignatureTrackingPage> {
                 const SizedBox(height: 6),
                 Text(item.date,
                     style: const TextStyle(color: Color(0xFF626B7A))),
+                const SizedBox(height: 8),
+                Chip(
+                  avatar: Icon(_statusIcon(item.status), size: 17),
+                  label: Text(item.status),
+                  backgroundColor: _statusColor(item.status),
+                ),
                 const SizedBox(height: 16),
                 LinearProgressIndicator(
                   value: item.ratio,
@@ -159,6 +165,8 @@ class _SignatureTrackingPageState extends State<SignatureTrackingPage> {
                     Text('Firmaron: ' + item.signed.toString()),
                     Text('Pendientes: ' + item.pending.toString(),
                         style: const TextStyle(fontWeight: FontWeight.w700)),
+                    Text('Vence: ${_date(item.deadline)}'),
+                    if (item.version > 0) Text('Versión: ${item.version}'),
                   ],
                 ),
               ],
@@ -168,4 +176,22 @@ class _SignatureTrackingPageState extends State<SignatureTrackingPage> {
       ),
     );
   }
+
+  Color _statusColor(String status) {
+    if (status == 'CERRADO') return const Color(0xFFDDE7F8);
+    if (status == 'COMPLETO') return const Color(0xFFE4F5EA);
+    if (status == 'VENCIDO') return const Color(0xFFFFE1E1);
+    return const Color(0xFFFFF2CC);
+  }
+
+  IconData _statusIcon(String status) {
+    if (status == 'CERRADO') return Icons.lock_outline;
+    if (status == 'COMPLETO') return Icons.check_circle_outline;
+    if (status == 'VENCIDO') return Icons.warning_amber_rounded;
+    return Icons.schedule;
+  }
+
+  String _date(DateTime value) =>
+      '${value.day.toString().padLeft(2, '0')}/'
+      '${value.month.toString().padLeft(2, '0')}/${value.year}';
 }

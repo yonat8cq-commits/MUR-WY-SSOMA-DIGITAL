@@ -1,4 +1,5 @@
 import '../database/app_database.dart';
+import 'document_control_service.dart';
 
 class TrainingProgress {
   final String key;
@@ -6,6 +7,9 @@ class TrainingProgress {
   final String date;
   final int total;
   final int signed;
+  final String status;
+  final DateTime deadline;
+  final int version;
 
   const TrainingProgress({
     required this.key,
@@ -13,6 +17,9 @@ class TrainingProgress {
     required this.date,
     required this.total,
     required this.signed,
+    required this.status,
+    required this.deadline,
+    required this.version,
   });
 
   int get pending => total - signed;
@@ -51,17 +58,28 @@ class AdminTrackingService {
       GROUP BY c.training_key, c.course, c.training_date
       ORDER BY c.training_date DESC, c.course ASC
     ''');
-    return rows
-        .map(
-          (row) => TrainingProgress(
-            key: row['training_key'] as String,
-            course: row['course'] as String? ?? '',
-            date: row['training_date'] as String? ?? '',
-            total: row['total'] as int? ?? 0,
-            signed: row['signed'] as int? ?? 0,
-          ),
-        )
-        .toList();
+    final result = <TrainingProgress>[];
+    final documentService = DocumentControlService();
+    for (final row in rows) {
+      final key = row['training_key'] as String;
+      final date = row['training_date'] as String? ?? '';
+      final total = row['total'] as int? ?? 0;
+      final signed = row['signed'] as int? ?? 0;
+      final control = await documentService.load(key, date);
+      result.add(
+        TrainingProgress(
+          key: key,
+          course: row['course'] as String? ?? '',
+          date: date,
+          total: total,
+          signed: signed,
+          status: control.statusFor(total: total, signed: signed),
+          deadline: control.deadline,
+          version: control.version,
+        ),
+      );
+    }
+    return result;
   }
 
   Future<List<ParticipantProgress>> loadParticipants(String trainingKey) async {

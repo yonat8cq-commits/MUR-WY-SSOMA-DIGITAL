@@ -1,4 +1,5 @@
 import '../database/app_database.dart';
+import 'document_control_service.dart';
 
 class WorkerProfile {
   final String dni;
@@ -21,13 +22,19 @@ class AssignedTraining {
   final String course;
   final String date;
   final bool signed;
+  final String status;
+  final DateTime deadline;
 
   const AssignedTraining({
     required this.key,
     required this.course,
     required this.date,
     required this.signed,
+    required this.status,
+    required this.deadline,
   });
+
+  bool get canSign => !signed && status != 'CERRADO' && status != 'VENCIDO';
 }
 
 class WorkerDataService {
@@ -80,15 +87,30 @@ class WorkerDataService {
       ''',
       [dni],
     );
-    return rows
-        .map(
-          (row) => AssignedTraining(
-            key: row['training_key'] as String,
-            course: row['course'] as String? ?? '',
-            date: row['training_date'] as String? ?? '',
-            signed: (row['signed'] as int? ?? 0) == 1,
-          ),
-        )
-        .toList();
+    final result = <AssignedTraining>[];
+    final documentService = DocumentControlService();
+    for (final row in rows) {
+      final key = row['training_key'] as String;
+      final date = row['training_date'] as String? ?? '';
+      final signed = (row['signed'] as int? ?? 0) == 1;
+      final control = await documentService.load(key, date);
+      result.add(
+        AssignedTraining(
+          key: key,
+          course: row['course'] as String? ?? '',
+          date: date,
+          signed: signed,
+          status: control.isClosed
+              ? 'CERRADO'
+              : control.isExpired
+                  ? 'VENCIDO'
+                  : signed
+                      ? 'FIRMADO'
+                      : 'EN FIRMA',
+          deadline: control.deadline,
+        ),
+      );
+    }
+    return result;
   }
 }

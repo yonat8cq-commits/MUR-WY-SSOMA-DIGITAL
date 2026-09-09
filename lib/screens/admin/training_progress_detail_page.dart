@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/admin_tracking_service.dart';
 import '../../services/authorized_signature_service.dart';
+import '../../services/document_control_service.dart';
 import '../../services/pdf_service.dart';
 
 enum ParticipantFilter { all, pending, signed }
@@ -22,6 +23,8 @@ class _TrainingProgressDetailPageState
   bool _exporting = false;
   List<AuthorizedSigner> _trainers = [];
   String? _trainerId;
+  DocumentControl? _control;
+  List<RecordVersion> _history = [];
 
   @override
   void initState() {
@@ -36,13 +39,104 @@ class _TrainingProgressDetailPageState
     final signatureService = AuthorizedSignatureService();
     final trainers = await signatureService.loadTrainers();
     final trainerId = await signatureService.trainerIdFor(widget.training.key);
+    final documentService = DocumentControlService();
+    final control = await documentService.load(
+      widget.training.key,
+      widget.training.date,
+    );
+    final history = await documentService.history(widget.training.key);
     if (!mounted) return;
     setState(() {
       _participants = rows;
       _trainers = trainers;
       _trainerId = trainerId;
+      _control = control;
+      _history = history;
       _loading = false;
     });
+  }
+
+  Future<void> _closeRecord() async {
+    final pending = _participants.where((item) => !item.signed).length;
+    if (pending > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Aún existen $pending firmas pendientes.')),
+      );
+      return;
+    }
+    if (_trainerId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona primero al capacitador.')),
+      );
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.lock_outline, size: 44),
+        title: const Text('Cerrar registro'),
+        content: const Text(
+          'Se generará una versión definitiva y los trabajadores ya no '
+          'podrán modificar sus firmas.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCELAR'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('CERRAR REGISTRO'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await DocumentControlService().close(
+      widget.training.key,
+      widget.training.date,
+    );
+    await _load();
+  }
+
+  Future<void> _reopenRecord() async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Corregir registro cerrado'),
+        content: TextField(
+          controller: controller,
+          minLines: 2,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            labelText: 'Motivo de la corrección',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCELAR'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = controller.text.trim();
+              if (value.isNotEmpty) Navigator.pop(context, value);
+            },
+            child: const Text('REABRIR'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (reason == null || reason.isEmpty) return;
+    await DocumentControlService().reopen(
+      widget.training.key,
+      widget.training.date,
+      reason,
+    );
+    await _load();
   }
 
   Future<void> _assignTrainer(String? trainerId) async {
@@ -114,6 +208,22 @@ class _TrainingProgressDetailPageState
                 const SizedBox(height: 6),
                 Text(widget.training.date,
                     style: const TextStyle(color: Color(0xFF626B7A))),
+                const SizedBox(height: 10),
+                Chip(
+                  avatar: Icon(
+                    _control?.isClosed == true
+                        ? Icons.lock_outline
+                        : Icons.description_outlined,
+                    size: 17,
+                  ),
+                  label: Text(
+                    _control?.statusFor(
+                          total: _participants.length,
+                          signed: signed,
+                        ) ??
+                        'EN FIRMA',
+                  ),
+                ),
                 const SizedBox(height: 16),
                 Wrap(
                   spacing: 8,
@@ -157,7 +267,7 @@ class _TrainingProgressDetailPageState
                         ),
                       )
                       .toList(),
-                  onChanged: _assignTrainer,
+                  onChanged: _control?.isClosed == true ? null : _assignTrainer,
                 ),
                 const SizedBox(height: 8),
                 const Text(
@@ -174,6 +284,39 @@ class _TrainingProgressDetailPageState
                         : 'Descargar F-SGI-04-01',
                   ),
                 ),
+                const SizedBox(height: 8),
+                if (_control?.isClosed == true)
+                  OutlinedButton.icon(
+                    onPressed: _reopenRecord,
+                    icon: const Icon(Icons.edit_note_outlined),
+                    label: const Text('REABRIR PARA CORRECCIÓN'),
+                  )
+                else
+                  OutlinedButton.icon(
+                    onPressed: _closeRecord,
+                    icon: const Icon(Icons.lock_outline),
+                    label: const Text('CERRAR REGISTRO DEFINITIVO'),
+                  ),
+                if (_history.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Historial documental',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  ..._history.map(
+                    (entry) => ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        entry.action == 'CIERRE'
+                            ? Icons.lock_outline
+                            : Icons.edit_note_outlined,
+                      ),
+                      title: Text('${entry.action} - Versión ${entry.version}'),
+                      subtitle: Text(entry.reason),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 ...visible.map(
                   (participant) => Card(

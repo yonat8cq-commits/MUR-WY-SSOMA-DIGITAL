@@ -20,7 +20,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE trabajadores (
@@ -54,6 +54,7 @@ class AppDatabase {
         await _createOfflineTables(db);
         await _createImportTables(db);
         await _createAuthorizedSignatureTables(db);
+        await _createDocumentControlTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -64,6 +65,9 @@ class AppDatabase {
         }
         if (oldVersion < 4) {
           await _createAuthorizedSignatureTables(db);
+        }
+        if (oldVersion < 5) {
+          await _createDocumentControlTables(db);
         }
       },
     );
@@ -195,5 +199,31 @@ class AppDatabase {
         conflictAlgorithm: ConflictAlgorithm.ignore,
       );
     }
+  }
+
+  Future<void> _createDocumentControlTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS control_documental (
+        training_key TEXT PRIMARY KEY,
+        deadline TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'EN_FIRMA',
+        closed_at TEXT,
+        closed_by TEXT,
+        current_version INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS versiones_registro (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        training_key TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        action TEXT NOT NULL,
+        reason TEXT,
+        created_at TEXT NOT NULL,
+        created_by TEXT NOT NULL,
+        UNIQUE(training_key, version, action)
+      )
+    ''');
   }
 }
