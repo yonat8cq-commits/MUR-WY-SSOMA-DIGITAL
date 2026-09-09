@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/admin_tracking_service.dart';
+import '../../services/tracking_report_service.dart';
 import 'training_progress_detail_page.dart';
 
 class SignatureTrackingPage extends StatefulWidget {
@@ -13,6 +14,7 @@ class _SignatureTrackingPageState extends State<SignatureTrackingPage> {
   final _search = TextEditingController();
   List<TrainingProgress> _items = [];
   bool _loading = true;
+  bool _exporting = false;
 
   @override
   void initState() {
@@ -35,6 +37,24 @@ class _SignatureTrackingPageState extends State<SignatureTrackingPage> {
     });
   }
 
+  Future<void> _exportReport() async {
+    setState(() => _exporting = true);
+    try {
+      final path = await TrackingReportService().generateAndSave();
+      if (!mounted || path == null) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Reporte guardado en: $path')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo generar el reporte: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final query = _search.text.trim().toLowerCase();
@@ -47,6 +67,16 @@ class _SignatureTrackingPageState extends State<SignatureTrackingPage> {
       appBar: AppBar(
         title: const Text('Seguimiento de firmas'),
         actions: [
+          IconButton(
+            tooltip: 'Descargar reporte Excel',
+            onPressed: _loading || _exporting ? null : _exportReport,
+            icon: _exporting
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download_outlined),
+          ),
           IconButton(
             tooltip: 'Actualizar',
             onPressed: _load,
@@ -69,6 +99,16 @@ class _SignatureTrackingPageState extends State<SignatureTrackingPage> {
                   const Text(
                     'Selecciona un curso para revisar firmados y pendientes.',
                     style: TextStyle(color: Color(0xFF626B7A)),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: _exporting ? null : _exportReport,
+                    icon: const Icon(Icons.table_view_outlined),
+                    label: Text(
+                      _exporting
+                          ? 'GENERANDO REPORTE...'
+                          : 'DESCARGAR REPORTE EXCEL',
+                    ),
                   ),
                   const SizedBox(height: 16),
                   TextField(

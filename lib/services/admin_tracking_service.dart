@@ -29,12 +29,16 @@ class TrainingProgress {
 class ParticipantProgress {
   final String dni;
   final String fullName;
+  final String company;
+  final String area;
   final String position;
   final bool signed;
 
   const ParticipantProgress({
     required this.dni,
     required this.fullName,
+    required this.company,
+    required this.area,
     required this.position,
     required this.signed,
   });
@@ -89,6 +93,8 @@ class AdminTrackingService {
       SELECT
         p.dni,
         w.full_name,
+        w.company,
+        w.area,
         w.position,
         CASE WHEN f.record_key IS NULL THEN 0 ELSE 1 END AS signed
       FROM participantes_capacitacion p
@@ -105,6 +111,8 @@ class AdminTrackingService {
           (row) => ParticipantProgress(
             dni: row['dni'] as String,
             fullName: row['full_name'] as String? ?? '',
+            company: row['company'] as String? ?? '',
+            area: row['area'] as String? ?? '',
             position: row['position'] as String? ?? '',
             signed: (row['signed'] as int? ?? 0) == 1,
           ),
