@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/offline_workflow_service.dart';
 import '../../services/worker_data_service.dart';
+import '../../services/notification_service.dart';
 import 'training_detail_page.dart';
 
 class WorkerHomePage extends StatefulWidget {
@@ -42,6 +43,7 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
       _sharedDevice = shared;
       _loading = false;
     });
+    await NotificationService.instance.showWorkerReminder(trainings);
   }
 
   Future<void> _logout() async {

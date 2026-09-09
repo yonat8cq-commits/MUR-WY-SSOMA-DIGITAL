@@ -3,6 +3,8 @@ import 'package:file_selector/file_selector.dart';
 import '../../routes/app_routes.dart';
 import '../../services/excel_service.dart';
 import '../../services/import_persistence_service.dart';
+import '../../services/notification_service.dart';
+import '../../services/reminder_service.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -17,6 +19,17 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   bool _loading = false;
   bool _saving = false;
   ImportSaveSummary? _saveSummary;
+
+  @override
+  void initState() {
+    super.initState();
+    _showAndroidReminders();
+  }
+
+  Future<void> _showAndroidReminders() async {
+    final alerts = await ReminderService().loadAlerts();
+    await NotificationService.instance.showAdminReminder(alerts);
+  }
 
   Future<void> _selectAndProcessExcel() async {
     const typeGroup = XTypeGroup(

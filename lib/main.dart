@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'routes/app_routes.dart';
+import 'services/notification_service.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.instance.initialize();
   runApp(const MurWySsomaApp());
 }
 
