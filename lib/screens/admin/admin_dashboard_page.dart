@@ -173,6 +173,13 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             icon: const Icon(Icons.verified_user_outlined),
             label: const Text('REVISAR CONSENTIMIENTOS'),
           ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () =>
+                Navigator.pushNamed(context, AppRoutes.historicalDocuments),
+            icon: const Icon(Icons.inventory_2_outlined),
+            label: const Text('ARCHIVO DE CAPACITACIONES HISTÓRICAS'),
+          ),
           const SizedBox(height: 12),
           Card(
             elevation: 0,

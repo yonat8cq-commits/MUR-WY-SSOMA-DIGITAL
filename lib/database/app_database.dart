@@ -20,7 +20,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE trabajadores (
@@ -56,6 +56,7 @@ class AppDatabase {
         await _createAuthorizedSignatureTables(db);
         await _createDocumentControlTables(db);
         await _createCompanyTables(db);
+        await _createHistoricalDocumentTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -73,8 +74,27 @@ class AppDatabase {
         if (oldVersion < 6) {
           await _createCompanyTables(db);
         }
+        if (oldVersion < 7) {
+          await _createHistoricalDocumentTables(db);
+        }
       },
     );
+  }
+
+  Future<void> _createHistoricalDocumentTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS documentos_historicos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        course TEXT NOT NULL,
+        training_date TEXT NOT NULL,
+        company TEXT NOT NULL,
+        file_name TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        file_bytes BLOB NOT NULL,
+        imported_at TEXT NOT NULL
+      )
+    ''');
   }
 
   Future<void> _createOfflineTables(Database db) async {
