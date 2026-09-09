@@ -72,14 +72,36 @@ class _TrainingDetailPageState extends State<TrainingDetailPage> {
     }
     if (!mounted) return;
 
+    final sharedDevice =
+        await OfflineWorkflowService.instance.sharedDeviceMode;
+    if (!mounted) return;
+
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
         icon: const Icon(Icons.verified_rounded, color: Color(0xFF16743B), size: 52),
         title: const Text('Firma registrada'),
-        content: const Text('Tu confirmación quedó guardada en este dispositivo. La sincronización con el servidor se incorporará en la siguiente fase.'),
-        actions: [FilledButton(onPressed: () { Navigator.pop(dialogContext); Navigator.pop(context, true); }, child: const Text('FINALIZAR'))],
+        content: Text(
+          sharedDevice
+              ? 'Tu firma quedó registrada. Por seguridad se cerrará tu sesión y el equipo quedará listo para el siguiente trabajador.'
+              : 'Tu confirmación y firma quedaron guardadas correctamente en este dispositivo.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              if (sharedDevice) {
+                await OfflineWorkflowService.instance.closeSession();
+                if (!mounted) return;
+                Navigator.pushNamedAndRemoveUntil(context, '/', (_) => false);
+              } else {
+                Navigator.pop(context, true);
+              }
+            },
+            child: Text(sharedDevice ? 'CERRAR SESIÓN' : 'FINALIZAR'),
+          ),
+        ],
       ),
     );
   }

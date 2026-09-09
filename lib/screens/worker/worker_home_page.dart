@@ -15,6 +15,7 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
   bool _loading = true;
   WorkerProfile? _profile;
   List<AssignedTraining> _trainings = [];
+  bool _sharedDevice = false;
 
   @override
   void initState() {
@@ -25,9 +26,12 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
   Future<void> _load() async {
     final dni = await OfflineWorkflowService.instance.currentDni;
     if (dni == null) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(context, '/', (_) => false);
+      }
       return;
     }
+    final shared = await OfflineWorkflowService.instance.sharedDeviceMode;
     final service = WorkerDataService();
     final profile = await service.loadProfile(dni);
     final trainings = await service.loadTrainings(dni);
@@ -35,8 +39,15 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
     setState(() {
       _profile = profile;
       _trainings = trainings;
+      _sharedDevice = shared;
       _loading = false;
     });
+  }
+
+  Future<void> _logout() async {
+    await OfflineWorkflowService.instance.closeSession();
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(context, '/', (_) => false);
   }
 
   Future<void> _openTraining(AssignedTraining training) async {
@@ -76,8 +87,7 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
         actions: [
           IconButton(
             tooltip: 'Cerrar sesión',
-            onPressed: () =>
-                Navigator.pushNamedAndRemoveUntil(context, '/', (_) => false),
+            onPressed: _logout,
             icon: const Icon(Icons.logout),
           ),
         ],
@@ -135,6 +145,24 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
     return ListView(
       children: [
         _header(title, subtitle),
+        if (_sharedDevice)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Card(
+              elevation: 0,
+              color: Color(0xFFFFF2CC),
+              child: ListTile(
+                leading: Icon(Icons.phonelink_lock_outlined),
+                title: Text(
+                  'Modo dispositivo compartido',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: Text(
+                  'Al finalizar una firma volverás al ingreso para proteger tus datos.',
+                ),
+              ),
+            ),
+          ),
         if (_profile == null)
           const Padding(
             padding: EdgeInsets.all(20),

@@ -11,6 +11,14 @@ class OfflineWorkflowService {
 
   Future<String?> get currentDni => _get('current_dni');
 
+  Future<void> closeSession() => _delete('current_dni');
+
+  Future<void> setSharedDeviceMode(bool enabled) =>
+      _set('shared_device_mode', enabled ? 'true' : 'false');
+
+  Future<bool> get sharedDeviceMode async =>
+      await _get('shared_device_mode') == 'true';
+
   Future<bool> passwordWasChanged(String dni) async =>
       await _get('password_changed_$dni') == 'true';
 
@@ -132,6 +140,15 @@ class OfflineWorkflowService {
       'app_settings',
       {'setting_key': key, 'setting_value': value},
       conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<void> _delete(String key) async {
+    final db = await AppDatabase.instance.database;
+    await db.delete(
+      'app_settings',
+      where: 'setting_key = ?',
+      whereArgs: [key],
     );
   }
 }

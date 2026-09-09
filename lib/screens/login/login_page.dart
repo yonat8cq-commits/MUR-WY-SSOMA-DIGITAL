@@ -15,10 +15,11 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _dniController = TextEditingController(text: '44045773');
-  final _passwordController = TextEditingController(text: 'MurWy2026');
+  final _dniController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _loading = false;
+  bool _sharedDevice = false;
 
   @override
   void dispose() {
@@ -66,6 +67,7 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
     final workflow = OfflineWorkflowService.instance;
+    await workflow.setSharedDeviceMode(_sharedDevice);
     await workflow.openSession(dni);
     final changed = await workflow.passwordWasChanged(dni);
     final consented = await workflow.consentWasAccepted(dni);
@@ -135,6 +137,22 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           validator: (value) => (value ?? '').length >= 6 ? null : 'La contraseña debe tener al menos 6 caracteres',
                           onFieldSubmitted: (_) => _login(),
+                        ),
+                        const SizedBox(height: 10),
+                        CheckboxListTile(
+                          value: _sharedDevice,
+                          onChanged: (value) => setState(
+                            () => _sharedDevice = value ?? false,
+                          ),
+                          contentPadding: EdgeInsets.zero,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          title: const Text(
+                            'Estoy usando un celular compartido',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          subtitle: const Text(
+                            'La sesión se cerrará automáticamente después de firmar.',
+                          ),
                         ),
                         const SizedBox(height: 22),
                         ElevatedButton(
