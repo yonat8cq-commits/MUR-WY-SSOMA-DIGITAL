@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'package:sqflite/sqflite.dart';
+
 import '../database/app_database.dart';
 
 class AuthorizedSigner {
