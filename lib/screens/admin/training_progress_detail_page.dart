@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/admin_tracking_service.dart';
 import '../../services/authorized_signature_service.dart';
 import '../../services/document_control_service.dart';
+import '../../services/company_service.dart';
 import '../../services/pdf_service.dart';
 
 enum ParticipantFilter { all, pending, signed }
@@ -25,6 +26,8 @@ class _TrainingProgressDetailPageState
   String? _trainerId;
   DocumentControl? _control;
   List<RecordVersion> _history = [];
+  List<CompanyProfile> _companies = [];
+  String? _companyId;
 
   @override
   void initState() {
@@ -45,6 +48,10 @@ class _TrainingProgressDetailPageState
       widget.training.date,
     );
     final history = await documentService.history(widget.training.key);
+    final companyService = CompanyService();
+    final companies = await companyService.loadCompanies();
+    final companyId =
+        await companyService.companyIdForTraining(widget.training.key);
     if (!mounted) return;
     setState(() {
       _participants = rows;
@@ -52,8 +59,20 @@ class _TrainingProgressDetailPageState
       _trainerId = trainerId;
       _control = control;
       _history = history;
+      _companies = companies;
+      _companyId = companyId;
       _loading = false;
     });
+  }
+
+  Future<void> _assignCompany(String? companyId) async {
+    if (companyId == null) return;
+    await CompanyService().assignToTraining(widget.training.key, companyId);
+    if (!mounted) return;
+    setState(() => _companyId = companyId);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Empresa asignada al registro.')),
+    );
   }
 
   Future<void> _closeRecord() async {
@@ -249,6 +268,24 @@ class _TrainingProgressDetailPageState
                           setState(() => _filter = ParticipantFilter.signed),
                     ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _companyId,
+                  decoration: const InputDecoration(
+                    labelText: 'Empresa del registro',
+                    prefixIcon: Icon(Icons.business_outlined),
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _companies
+                      .map(
+                        (company) => DropdownMenuItem(
+                          value: company.id,
+                          child: Text(company.businessName),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _control?.isClosed == true ? null : _assignCompany,
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(

@@ -20,7 +20,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE trabajadores (
@@ -55,6 +55,7 @@ class AppDatabase {
         await _createImportTables(db);
         await _createAuthorizedSignatureTables(db);
         await _createDocumentControlTables(db);
+        await _createCompanyTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -68,6 +69,9 @@ class AppDatabase {
         }
         if (oldVersion < 5) {
           await _createDocumentControlTables(db);
+        }
+        if (oldVersion < 6) {
+          await _createCompanyTables(db);
         }
       },
     );
@@ -225,5 +229,43 @@ class AppDatabase {
         UNIQUE(training_key, version, action)
       )
     ''');
+  }
+
+  Future<void> _createCompanyTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS empresas (
+        company_id TEXT PRIMARY KEY,
+        business_name TEXT NOT NULL,
+        ruc TEXT,
+        address TEXT,
+        economic_activity TEXT,
+        employee_count INTEGER NOT NULL DEFAULT 0,
+        logo_png BLOB,
+        active INTEGER NOT NULL DEFAULT 1,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS empresa_capacitacion (
+        training_key TEXT PRIMARY KEY,
+        company_id TEXT NOT NULL,
+        assigned_at TEXT NOT NULL
+      )
+    ''');
+    await db.insert(
+      'empresas',
+      {
+        'company_id': 'mur_wy',
+        'business_name': 'MUR WY S.A.C.',
+        'ruc': '20470407442',
+        'address':
+            'AV. MALECÓN CHECA NRO. 3777 URB. CAMPOY - SAN JUAN DE LURIGANCHO - LIMA',
+        'economic_activity': 'MINERÍA',
+        'employee_count': 0,
+        'active': 1,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
   }
 }

@@ -6,6 +6,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../database/app_database.dart';
 import 'authorized_signature_service.dart';
+import 'company_service.dart';
 
 class FsgiParticipant {
   final String dni;
@@ -31,6 +32,7 @@ class FsgiRecord {
   final List<FsgiParticipant> participants;
   final AuthorizedSigner? trainer;
   final AuthorizedSigner? responsible;
+  final CompanyProfile company;
 
   const FsgiRecord({
     required this.course,
@@ -38,6 +40,7 @@ class FsgiRecord {
     required this.participants,
     required this.trainer,
     required this.responsible,
+    required this.company,
   });
 }
 
@@ -73,6 +76,7 @@ class PdfService {
     final trainerId = await signatureService.trainerIdFor(trainingKey);
     final trainer = await signatureService.loadSigner(trainerId);
     final responsible = await signatureService.loadSigner('jhonathan');
+    final company = await CompanyService().companyForTraining(trainingKey);
     return FsgiRecord(
       course: trainingRows.first['course'] as String? ?? '',
       date: trainingRows.first['training_date'] as String? ?? '',
@@ -90,6 +94,7 @@ class PdfService {
           .toList(),
       trainer: trainer,
       responsible: responsible,
+      company: company,
     );
   }
 
@@ -180,12 +185,29 @@ class PdfService {
           height: 20,
         ),
         _box(
-          pw.Text(
-            'DATOS DEL EMPLEADOR: MUR WY SAC',
-            style: pw.TextStyle(
-              fontSize: 7,
-              fontWeight: pw.FontWeight.bold,
-            ),
+          pw.Row(
+            children: [
+              if (record.company.logoPng != null) ...[
+                pw.SizedBox(
+                  width: 50,
+                  height: 15,
+                  child: pw.Image(
+                    pw.MemoryImage(record.company.logoPng!),
+                    fit: pw.BoxFit.contain,
+                  ),
+                ),
+                pw.SizedBox(width: 5),
+              ],
+              pw.Expanded(
+                child: pw.Text(
+                  'DATOS DEL EMPLEADOR: ${record.company.businessName}',
+                  style: pw.TextStyle(
+                    fontSize: 7,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
           height: 18,
         ),
@@ -210,11 +232,14 @@ class PdfService {
               header: true,
             ),
             _employerRow([
-              'MUR WY SAC.',
-              '20470407442',
-              'AV. MALECÓN CHECA NRO. 3777 URB. CAMPOY - SAN JUAN DE LURIGANCHO - LIMA',
-              'MINERÍA',
-              record.participants.length.toString()
+              record.company.businessName,
+              record.company.ruc,
+              record.company.address,
+              record.company.economicActivity,
+              (record.company.employeeCount > 0
+                      ? record.company.employeeCount
+                      : record.participants.length)
+                  .toString()
             ]),
           ],
         ),
@@ -369,7 +394,7 @@ class PdfService {
             style: const pw.TextStyle(fontSize: 5.5),
           ),
           pw.Text(
-            'EMPRESA: MUR WY S.A.C.        N° HORAS: __________',
+            'EMPRESA: ${record.company.businessName}        N° HORAS: __________',
             style: const pw.TextStyle(fontSize: 5.5),
           ),
           pw.Row(
