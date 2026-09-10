@@ -20,7 +20,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 9,
+      version: 10,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE trabajadores (
@@ -58,6 +58,7 @@ class AppDatabase {
         await _createCompanyTables(db);
         await _createHistoricalDocumentTables(db);
         await _createAuditTables(db);
+        await _createSyncTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -84,8 +85,36 @@ class AppDatabase {
         if (oldVersion < 9) {
           await _createAuditTables(db);
         }
+        if (oldVersion < 10) {
+          await _createSyncTables(db);
+        }
       },
     );
+  }
+
+  Future<void> _createSyncTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sync_outbox (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        operation TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        last_error TEXT,
+        synced_at TEXT,
+        UNIQUE(entity_type, entity_id, operation)
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sync_metadata (
+        collection_name TEXT PRIMARY KEY,
+        last_pulled_at TEXT,
+        last_success_at TEXT,
+        last_error TEXT
+      )
+    ''');
   }
 
   Future<void> _createAuditTables(Database db) async {

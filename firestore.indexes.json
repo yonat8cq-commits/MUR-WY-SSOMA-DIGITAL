@@ -1,0 +1,29 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "training_participants",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "dni", "order": "ASCENDING"},
+        {"fieldPath": "training_date", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "trainings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "company_id", "order": "ASCENDING"},
+        {"fieldPath": "training_date", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "audit_log",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "category", "order": "ASCENDING"},
+        {"fieldPath": "occurred_at", "order": "DESCENDING"}
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

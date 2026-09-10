@@ -41,6 +41,8 @@ class BackupService {
     'empresa_capacitacion',
     'documentos_historicos',
     'auditoria',
+    'sync_outbox',
+    'sync_metadata',
   ];
 
   static const _protectedSettings = {

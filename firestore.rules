@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.role == 'SUPER_ADMIN'; }
+    function ownsDni(dni) { return signedIn() && request.auth.token.dni == dni; }
+
+    match /users/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow write: if isAdmin();
+    }
+    match /companies/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+    match /trainings/{id} {
+      allow read: if isAdmin() || (signedIn() &&
+        exists(/databases/$(database)/documents/training_participants/$(id + '_' + request.auth.token.dni)));
+      allow write: if isAdmin();
+    }
+    match /training_participants/{id} {
+      allow read: if isAdmin() || ownsDni(resource.data.dni);
+      allow write: if isAdmin();
+    }
+    match /confirmations/{id} {
+      allow read: if isAdmin() || ownsDni(resource.data.dni);
+      allow create: if ownsDni(request.resource.data.dni)
+        && request.resource.data.keys().hasAll(['dni', 'training_id', 'confirmed_at', 'signature_path'])
+        && exists(/databases/$(database)/documents/training_participants/$(request.resource.data.training_id + '_' + request.auth.token.dni));
+      allow update, delete: if false;
+    }
+    match /consents/{id} {
+      allow read: if isAdmin() || ownsDni(resource.data.dni);
+      allow create: if ownsDni(request.resource.data.dni)
+        && request.resource.data.keys().hasAll(['dni', 'version', 'accepted_at', 'signature_path']);
+      allow update, delete: if false;
+    }
+    match /authorized_signatures/{id} { allow read, write: if isAdmin(); }
+    match /document_versions/{id} { allow read, write: if isAdmin(); }
+    match /historical_documents/{id} { allow read, write: if isAdmin(); }
+    match /audit_log/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
