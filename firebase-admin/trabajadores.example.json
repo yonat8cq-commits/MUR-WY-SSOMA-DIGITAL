@@ -1,0 +1,10 @@
+[
+  {
+    "dni": "12345678",
+    "full_name": "TRABAJADOR DE EJEMPLO",
+    "company": "MUR WY S.A.C.",
+    "area": "OPERACIONES",
+    "position": "OPERADOR",
+    "active": true
+  }
+]

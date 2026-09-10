@@ -24,5 +24,22 @@ La cola offline ya puede enviar hasta 100 operaciones por ciclo a Firestore y
 Storage. Las operaciones sin permisos o sin conexión permanecen pendientes con
 el detalle del último error para volver a intentarlas posteriormente.
 
+## Despliegue seguro desde GitHub
+
+1. En GitHub abrir `Settings > Secrets and variables > Actions`.
+2. Crear el secreto `FIREBASE_SERVICE_ACCOUNT_JSON` con el JSON completo de la
+   cuenta de servicio del proyecto. No publicar ni confirmar este archivo.
+3. Ejecutar el workflow `DESPLEGAR FIREBASE SEGURO` desde Actions.
+
+El workflow valida que la credencial pertenezca a `mur-wy-ssoma-digital`, usa
+Application Default Credentials y elimina el archivo temporal al finalizar.
+
+## Provisionamiento de trabajadores
+
+La herramienta `firebase-admin/provision-users.mjs` crea o actualiza cuentas,
+asigna los claims `role: WORKER` y `dni`, y mantiene el documento central del
+trabajador. La contraseña temporal se recibe únicamente mediante la variable
+`MURWY_TEMPORARY_PASSWORD`; nunca se almacena en el repositorio.
+
 Nunca se debe colocar una clave privada de cuenta de servicio dentro de Flutter o del repositorio.
 El rol `SUPER_ADMIN` y el DNI deben asignarse únicamente mediante Admin SDK en un servidor confiable.
