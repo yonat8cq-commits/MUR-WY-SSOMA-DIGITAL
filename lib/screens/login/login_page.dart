@@ -4,6 +4,7 @@ import '../../services/offline_workflow_service.dart';
 import '../../services/worker_data_service.dart';
 import '../../services/worker_admin_service.dart';
 import '../../services/password_service.dart';
+import '../../services/firebase_auth_service.dart';
 import '../onboarding/change_password_page.dart';
 import '../onboarding/consent_page.dart';
 
@@ -77,6 +78,10 @@ class _LoginPageState extends State<LoginPage> {
       );
       return;
     }
+    final centralLogin = await FirebaseAuthService.instance.signInWorker(
+      dni: dni,
+      password: _passwordController.text,
+    );
     final workflow = OfflineWorkflowService.instance;
     await workflow.setSharedDeviceMode(_sharedDevice);
     await workflow.openSession(dni);
@@ -85,6 +90,14 @@ class _LoginPageState extends State<LoginPage> {
         : !profile.requiresPasswordChange;
     final consented = await workflow.consentWasAccepted(dni);
     if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(centralLogin == CentralLoginResult.authenticated
+            ? 'Sesión central protegida y conectada.'
+            : 'Ingreso local: los cambios se sincronizarán al recuperar conexión.'),
+      ),
+    );
 
     if (!changed) {
       Navigator.pushReplacement(

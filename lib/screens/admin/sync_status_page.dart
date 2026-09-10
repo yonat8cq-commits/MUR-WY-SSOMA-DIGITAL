@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/firebase_bootstrap_service.dart';
+import '../../services/firebase_auth_service.dart';
 import '../../services/sync_status_service.dart';
 
 class SyncStatusPage extends StatefulWidget {
@@ -72,6 +73,22 @@ class _SyncStatusPageState extends State<SyncStatusPage> {
                 subtitle: Text(_firebase.isReady
                     ? 'Siguiente: habilitar Authentication, Firestore y Storage en Firebase Console.'
                     : 'No se perderán firmas ni confirmaciones por falta de internet.'),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Card(
+              child: ListTile(
+                leading: Icon(
+                  FirebaseAuthService.instance.hasCentralSession
+                      ? Icons.verified_user_outlined
+                      : Icons.person_off_outlined,
+                ),
+                title: Text(FirebaseAuthService.instance.hasCentralSession
+                    ? 'Usuario central autenticado'
+                    : 'Sin sesión central'),
+                subtitle: const Text(
+                  'El acceso por DNI utiliza una identidad interna y no expone el correo personal del trabajador.',
+                ),
               ),
             ),
             const SizedBox(height: 14),

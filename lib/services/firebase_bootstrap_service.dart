@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -28,17 +30,21 @@ class FirebaseBootstrapService extends ChangeNotifier {
       error = null;
       notifyListeners();
 
-      try {
-        messagingToken = await FirebaseMessaging.instance.getToken();
-        notifyListeners();
-      } catch (_) {
-        // El token se obtendrá de nuevo cuando el dispositivo tenga conexión.
-      }
+      unawaited(_loadMessagingToken());
     } catch (exception) {
       state = FirebaseConnectionState.unavailable;
       error = exception.toString();
       notifyListeners();
       debugPrint('Firebase no disponible: $exception');
+    }
+  }
+
+  Future<void> _loadMessagingToken() async {
+    try {
+      messagingToken = await FirebaseMessaging.instance.getToken();
+      notifyListeners();
+    } catch (_) {
+      // El token se obtendrá de nuevo cuando el dispositivo tenga conexión.
     }
   }
 }

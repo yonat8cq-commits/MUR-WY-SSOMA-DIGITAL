@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import '../database/app_database.dart';
 import 'document_control_service.dart';
 import 'sync_outbox_service.dart';
+import 'firebase_auth_service.dart';
 
 class OfflineWorkflowService {
   static final OfflineWorkflowService instance = OfflineWorkflowService._();
@@ -12,7 +13,10 @@ class OfflineWorkflowService {
 
   Future<String?> get currentDni => _get('current_dni');
 
-  Future<void> closeSession() => _delete('current_dni');
+  Future<void> closeSession() async {
+    await _delete('current_dni');
+    await FirebaseAuthService.instance.signOut();
+  }
 
   Future<void> setSharedDeviceMode(bool enabled) =>
       _set('shared_device_mode', enabled ? 'true' : 'false');

@@ -15,5 +15,10 @@ Proyecto: MUR WY SSOMA DIGITAL
 La aplicación ya inicializa Firebase y Firebase Cloud Messaging al arrancar. Si no
 hay conexión, conserva el funcionamiento local y la cola de sincronización.
 
+Las cuentas de trabajadores usarán internamente el identificador
+`DNI@auth.murwy.local`. Esta dirección técnica no es un correo real ni se muestra
+al trabajador. Las cuentas y los claims deben provisionarse mediante Admin SDK;
+la aplicación móvil nunca debe contener privilegios administrativos.
+
 Nunca se debe colocar una clave privada de cuenta de servicio dentro de Flutter o del repositorio.
 El rol `SUPER_ADMIN` y el DNI deben asignarse únicamente mediante Admin SDK en un servidor confiable.
