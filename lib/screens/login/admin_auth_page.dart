@@ -18,6 +18,7 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
   bool _loading = true;
   bool _configured = false;
   bool _obscure = true;
+  bool _obscureConfirmation = true;
 
   @override
   void initState() {
@@ -107,14 +108,17 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
     final recovery = TextEditingController();
     final newPassword = TextEditingController();
     final confirmation = TextEditingController();
+    var obscureNewPassword = true;
+    var obscureConfirmation = true;
     final result = await showDialog<List<String>>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Recuperar acceso'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Recuperar acceso'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
               TextField(
                 controller: recovery,
                 textCapitalization: TextCapitalization.characters,
@@ -123,34 +127,61 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
               const SizedBox(height: 12),
               TextField(
                 controller: newPassword,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Nueva contraseña', prefixIcon: Icon(Icons.lock_outline)),
+                obscureText: obscureNewPassword,
+                decoration: InputDecoration(
+                  labelText: 'Nueva contraseña',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    onPressed: () => setDialogState(
+                      () => obscureNewPassword = !obscureNewPassword,
+                    ),
+                    icon: Icon(
+                      obscureNewPassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: confirmation,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Confirmar contraseña', prefixIcon: Icon(Icons.verified_user_outlined)),
+                obscureText: obscureConfirmation,
+                decoration: InputDecoration(
+                  labelText: 'Confirmar contraseña',
+                  prefixIcon: const Icon(Icons.verified_user_outlined),
+                  suffixIcon: IconButton(
+                    onPressed: () => setDialogState(
+                      () => obscureConfirmation = !obscureConfirmation,
+                    ),
+                    icon: Icon(
+                      obscureConfirmation
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
+                  ),
+                ),
               ),
-            ],
+              ],
+            ),
           ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('CANCELAR')),
+            FilledButton(
+              onPressed: () {
+                final password = newPassword.text;
+                if (recovery.text.trim().isEmpty || password.length < 10 || !RegExp(r'[A-Za-z]').hasMatch(password) || !RegExp(r'\d').hasMatch(password) || password != confirmation.text) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Verifica el código y usa una contraseña de 10 caracteres, con letra y número.')),
+                  );
+                  return;
+                }
+                Navigator.pop(dialogContext, [recovery.text, password]);
+              },
+              child: const Text('RESTABLECER'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('CANCELAR')),
-          FilledButton(
-            onPressed: () {
-              final password = newPassword.text;
-              if (recovery.text.trim().isEmpty || password.length < 10 || !RegExp(r'[A-Za-z]').hasMatch(password) || !RegExp(r'\d').hasMatch(password) || password != confirmation.text) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Verifica el código y usa una contraseña de 10 caracteres, con letra y número.')),
-                );
-                return;
-              }
-              Navigator.pop(dialogContext, [recovery.text, password]);
-            },
-            child: const Text('RESTABLECER'),
-          ),
-        ],
       ),
     );
     recovery.dispose();
@@ -232,8 +263,21 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
                               const SizedBox(height: 14),
                               TextFormField(
                                 controller: _confirmation,
-                                obscureText: true,
-                                decoration: const InputDecoration(labelText: 'Confirmar contraseña', prefixIcon: Icon(Icons.verified_user_outlined)),
+                                obscureText: _obscureConfirmation,
+                                decoration: InputDecoration(
+                                  labelText: 'Confirmar contraseña',
+                                  prefixIcon: const Icon(Icons.verified_user_outlined),
+                                  suffixIcon: IconButton(
+                                    onPressed: () => setState(
+                                      () => _obscureConfirmation = !_obscureConfirmation,
+                                    ),
+                                    icon: Icon(
+                                      _obscureConfirmation
+                                          ? Icons.visibility_outlined
+                                          : Icons.visibility_off_outlined,
+                                    ),
+                                  ),
+                                ),
                                 validator: (value) => value == _password.text ? null : 'Las contraseñas no coinciden.',
                               ),
                               const SizedBox(height: 8),

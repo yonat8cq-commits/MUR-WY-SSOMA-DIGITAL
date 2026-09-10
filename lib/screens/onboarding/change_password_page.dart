@@ -17,6 +17,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   final _password = TextEditingController();
   final _confirmation = TextEditingController();
   bool _saving = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmation = true;
 
   @override
   void dispose() {
@@ -67,11 +69,21 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               children: [
                 TextFormField(
                   controller: _password,
-                  obscureText: true,
-                  decoration: const InputDecoration(
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
                     labelText: 'Nueva contraseña',
-                    prefixIcon: Icon(Icons.lock_outline),
+                    prefixIcon: const Icon(Icons.lock_outline),
                     helperText: 'Mínimo 8 caracteres, una letra y un número.',
+                    suffixIcon: IconButton(
+                      onPressed: () => setState(
+                        () => _obscurePassword = !_obscurePassword,
+                      ),
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                    ),
                   ),
                   validator: (value) {
                     final text = value ?? '';
@@ -86,10 +98,20 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                 const SizedBox(height: 18),
                 TextFormField(
                   controller: _confirmation,
-                  obscureText: true,
-                  decoration: const InputDecoration(
+                  obscureText: _obscureConfirmation,
+                  decoration: InputDecoration(
                     labelText: 'Repite la contraseña',
-                    prefixIcon: Icon(Icons.verified_user_outlined),
+                    prefixIcon: const Icon(Icons.verified_user_outlined),
+                    suffixIcon: IconButton(
+                      onPressed: () => setState(
+                        () => _obscureConfirmation = !_obscureConfirmation,
+                      ),
+                      icon: Icon(
+                        _obscureConfirmation
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                    ),
                   ),
                   validator: (value) =>
                       value == _password.text ? null : 'Las contraseñas no coinciden.',
