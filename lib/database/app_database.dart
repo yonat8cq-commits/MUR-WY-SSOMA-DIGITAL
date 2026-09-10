@@ -20,7 +20,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 8,
+      version: 9,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE trabajadores (
@@ -57,6 +57,7 @@ class AppDatabase {
         await _createDocumentControlTables(db);
         await _createCompanyTables(db);
         await _createHistoricalDocumentTables(db);
+        await _createAuditTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -80,8 +81,30 @@ class AppDatabase {
         if (oldVersion < 8) {
           await _addWorkerCredentials(db);
         }
+        if (oldVersion < 9) {
+          await _createAuditTables(db);
+        }
       },
     );
+  }
+
+  Future<void> _createAuditTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS auditoria (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        occurred_at TEXT NOT NULL,
+        actor TEXT NOT NULL,
+        category TEXT NOT NULL,
+        action TEXT NOT NULL,
+        detail TEXT NOT NULL,
+        target_type TEXT,
+        target_id TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_auditoria_fecha
+      ON auditoria(occurred_at DESC)
+    ''');
   }
 
   Future<void> _addWorkerCredentials(Database db) async {

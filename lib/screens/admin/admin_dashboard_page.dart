@@ -223,6 +223,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             icon: const Icon(Icons.notifications_active_outlined),
             label: const Text('VER ALERTAS Y RECORDATORIOS'),
           ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.auditLog),
+            icon: const Icon(Icons.fact_check_outlined),
+            label: const Text('VER REGISTRO DE AUDITORÍA'),
+          ),
           const SizedBox(height: 12),
           Card(
             elevation: 0,

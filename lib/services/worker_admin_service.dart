@@ -1,4 +1,5 @@
 import '../database/app_database.dart';
+import 'audit_service.dart';
 
 class WorkerAdminItem {
   final String dni;
@@ -73,6 +74,13 @@ class WorkerAdminService {
       where: 'dni = ?',
       whereArgs: [dni],
     );
+    await AuditService().record(
+      category: 'USUARIOS',
+      action: active ? 'TRABAJADOR ACTIVADO' : 'TRABAJADOR DESACTIVADO',
+      detail: 'Se cambió el estado de acceso del trabajador con DNI $dni.',
+      targetType: 'TRABAJADOR',
+      targetId: dni,
+    );
   }
 
   Future<void> resetTemporaryPassword(String dni) async {
@@ -95,5 +103,12 @@ class WorkerAdminService {
         whereArgs: ['password_changed_$dni'],
       );
     });
+    await AuditService().record(
+      category: 'USUARIOS',
+      action: 'CONTRASEÑA TEMPORAL RESTABLECIDA',
+      detail: 'El trabajador deberá crear una nueva contraseña en su próximo ingreso.',
+      targetType: 'TRABAJADOR',
+      targetId: dni,
+    );
   }
 }

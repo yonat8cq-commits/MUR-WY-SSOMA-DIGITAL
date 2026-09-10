@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../database/app_database.dart';
 import 'password_service.dart';
+import 'audit_service.dart';
 
 class AdminAuthService {
   static bool _sessionAuthorized = false;
@@ -44,6 +45,11 @@ class AdminAuthService {
       );
     });
     _sessionAuthorized = true;
+    await AuditService().record(
+      category: 'SEGURIDAD',
+      action: 'CREDENCIALES DE ADMINISTRADOR CONFIGURADAS',
+      detail: 'Se configuró la contraseña y se emitió un código de recuperación.',
+    );
     return recoveryCode;
   }
 
@@ -66,6 +72,14 @@ class AdminAuthService {
       CredentialHasher.hash(password, salt),
     );
     _sessionAuthorized = valid;
+    await AuditService().record(
+      category: 'SEGURIDAD',
+      action: valid ? 'INICIO DE SESIÓN EXITOSO' : 'INTENTO DE ACCESO RECHAZADO',
+      detail: valid
+          ? 'El super administrador ingresó al panel.'
+          : 'Se rechazó un intento por contraseña incorrecta.',
+      actor: valid ? AuditService.admin : 'USUARIO NO AUTENTICADO',
+    );
     return valid;
   }
 

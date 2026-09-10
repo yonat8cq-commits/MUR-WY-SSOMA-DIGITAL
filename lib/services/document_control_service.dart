@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
 import '../database/app_database.dart';
+import 'audit_service.dart';
 
 class DocumentControl {
   final String trainingKey;
@@ -112,6 +113,13 @@ class DocumentControlService {
         'created_by': 'CUTIPA QUISPE JHONATHAN',
       });
     });
+    await AuditService().record(
+      category: 'DOCUMENTOS',
+      action: 'REGISTRO CERRADO',
+      detail: 'Se cerró definitivamente el registro de capacitación, versión $nextVersion.',
+      targetType: 'CAPACITACIÓN',
+      targetId: trainingKey,
+    );
   }
 
   Future<void> reopen(
@@ -143,6 +151,13 @@ class DocumentControlService {
         'created_by': 'CUTIPA QUISPE JHONATHAN',
       });
     });
+    await AuditService().record(
+      category: 'DOCUMENTOS',
+      action: 'REGISTRO REABIERTO',
+      detail: 'Motivo: $reason',
+      targetType: 'CAPACITACIÓN',
+      targetId: trainingKey,
+    );
   }
 
   Future<List<RecordVersion>> history(String trainingKey) async {

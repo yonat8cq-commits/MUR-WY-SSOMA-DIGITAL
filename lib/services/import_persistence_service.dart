@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import '../database/app_database.dart';
 import 'excel_service.dart';
+import 'audit_service.dart';
 
 class ImportSaveSummary {
   final int workers;
@@ -101,6 +102,13 @@ class ImportPersistenceService {
       }
     });
 
+    await AuditService().record(
+      category: 'IMPORTACIÓN',
+      action: 'EXCEL TECSUP IMPORTADO',
+      detail: '${result.approvedRows} aprobados, ${result.excludedRows} excluidos y ${result.trainings.length} capacitaciones procesadas.',
+      targetType: 'ARCHIVO',
+      targetId: fileName,
+    );
     return ImportSaveSummary(
       workers: workerIds.length,
       trainings: result.trainings.length,
