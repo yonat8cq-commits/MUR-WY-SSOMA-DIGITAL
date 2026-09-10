@@ -5,7 +5,7 @@ service firebase.storage {
     function isAdmin() { return signedIn() && request.auth.token.role == 'SUPER_ADMIN'; }
     match /signatures/{dni}/{file=**} {
       allow read: if isAdmin() || (signedIn() && request.auth.token.dni == dni);
-      allow write: if signedIn() && request.auth.token.dni == dni
+      allow write: if (isAdmin() || (signedIn() && request.auth.token.dni == dni))
         && request.resource.size < 2 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
     }

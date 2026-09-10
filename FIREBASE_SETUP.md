@@ -20,5 +20,9 @@ Las cuentas de trabajadores usarán internamente el identificador
 al trabajador. Las cuentas y los claims deben provisionarse mediante Admin SDK;
 la aplicación móvil nunca debe contener privilegios administrativos.
 
+La cola offline ya puede enviar hasta 100 operaciones por ciclo a Firestore y
+Storage. Las operaciones sin permisos o sin conexión permanecen pendientes con
+el detalle del último error para volver a intentarlas posteriormente.
+
 Nunca se debe colocar una clave privada de cuenta de servicio dentro de Flutter o del repositorio.
 El rol `SUPER_ADMIN` y el DNI deben asignarse únicamente mediante Admin SDK en un servidor confiable.

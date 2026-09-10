@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'firebase_bootstrap_service.dart';
+import 'firebase_sync_service.dart';
 
 enum CentralLoginResult { authenticated, localOnly }
 
@@ -27,6 +30,7 @@ class FirebaseAuthService {
         password: password,
       );
       await credential.user?.getIdToken(true);
+      unawaited(FirebaseSyncService.instance.syncPending());
       return CentralLoginResult.authenticated;
     } on FirebaseAuthException {
       // La cuenta central puede estar aún sin provisionar o el celular sin red.

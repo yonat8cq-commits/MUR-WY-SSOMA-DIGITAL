@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/firebase_bootstrap_service.dart';
 import '../../services/firebase_auth_service.dart';
+import '../../services/firebase_sync_service.dart';
 import '../../services/sync_status_service.dart';
 
 class SyncStatusPage extends StatefulWidget {
@@ -13,6 +14,7 @@ class SyncStatusPage extends StatefulWidget {
 
 class _SyncStatusPageState extends State<SyncStatusPage> {
   SyncStatus? _status;
+  bool _syncing = false;
 
   FirebaseBootstrapService get _firebase => FirebaseBootstrapService.instance;
 
@@ -36,6 +38,21 @@ class _SyncStatusPageState extends State<SyncStatusPage> {
   Future<void> _load() async {
     final value = await SyncStatusService().load();
     if (mounted) setState(() => _status = value);
+  }
+
+  Future<void> _syncNow() async {
+    setState(() => _syncing = true);
+    final result = await FirebaseSyncService.instance.syncPending();
+    await _load();
+    if (!mounted) return;
+    setState(() => _syncing = false);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(result.synced > 0
+          ? '${result.synced} operaciones sincronizadas; ${result.pending} pendientes.'
+          : FirebaseAuthService.instance.hasCentralSession
+              ? 'No se enviaron operaciones. Revisa permisos o servicios Firebase.'
+              : 'Inicia una sesión central para sincronizar.'),
+    ));
   }
 
   @override
@@ -71,9 +88,20 @@ class _SyncStatusPageState extends State<SyncStatusPage> {
                     ? 'Configuración Android instalada'
                     : 'Modo local activo'),
                 subtitle: Text(_firebase.isReady
-                    ? 'Siguiente: habilitar Authentication, Firestore y Storage en Firebase Console.'
+                    ? 'Authentication está preparado. Firestore y Storage recibirán la cola al habilitarlos y desplegar las reglas.'
                     : 'No se perderán firmas ni confirmaciones por falta de internet.'),
               ),
+            ),
+            const SizedBox(height: 14),
+            ElevatedButton.icon(
+              onPressed: _syncing ? null : _syncNow,
+              icon: _syncing
+                  ? const SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.sync),
+              label: Text(_syncing ? 'SINCRONIZANDO…' : 'SINCRONIZAR AHORA'),
             ),
             const SizedBox(height: 10),
             Card(

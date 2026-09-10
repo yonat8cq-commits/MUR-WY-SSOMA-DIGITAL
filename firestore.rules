@@ -6,7 +6,7 @@ service cloud.firestore {
     function ownsDni(dni) { return signedIn() && request.auth.token.dni == dni; }
 
     match /users/{uid} {
-      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow read: if isAdmin() || ownsDni(uid);
       allow write: if isAdmin();
     }
     match /companies/{id} {
