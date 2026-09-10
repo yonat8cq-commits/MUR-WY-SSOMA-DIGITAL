@@ -40,8 +40,11 @@ jobs:
       - name: Install Firebase CLI
         run: npm install --global firebase-tools
 
-      - name: Deploy Firestore and Storage rules
-        run: firebase deploy --project mur-wy-ssoma-digital --only firestore:rules,firestore:indexes,storage
+      - name: Deploy Firestore rules and indexes
+        run: firebase deploy --project mur-wy-ssoma-digital --only firestore:rules,firestore:indexes
+
+      - name: Deploy Storage rules
+        run: firebase deploy --project mur-wy-ssoma-digital --only storage
 
       - name: Remove temporary credential
         if: always()
