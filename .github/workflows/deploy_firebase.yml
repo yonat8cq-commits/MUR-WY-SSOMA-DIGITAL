@@ -2,6 +2,11 @@ name: DESPLEGAR FIREBASE SEGURO
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - codex/mvp-trabajador-fase-1
+    paths:
+      - .firebase-deploy-trigger
 
 permissions:
   contents: read
