@@ -12,6 +12,7 @@ import '../screens/admin/historical_documents_page.dart';
 import '../screens/admin/reminders_page.dart';
 import '../screens/admin/audit_log_page.dart';
 import '../screens/admin/backup_page.dart';
+import '../screens/admin/admin_security_page.dart';
 
 class AppRoutes {
   static const login = '/';
@@ -27,6 +28,7 @@ class AppRoutes {
   static const reminders = '/administrador/alertas';
   static const auditLog = '/administrador/auditoria';
   static const backup = '/administrador/respaldo';
+  static const adminSecurity = '/administrador/seguridad';
 
   static final Map<String, WidgetBuilder> routes = {
     login: (_) => const LoginPage(),
@@ -42,5 +44,6 @@ class AppRoutes {
     reminders: (_) => const RemindersPage(),
     auditLog: (_) => const AuditLogPage(),
     backup: (_) => const BackupPage(),
+    adminSecurity: (_) => const AdminSecurityPage(),
   };
 }

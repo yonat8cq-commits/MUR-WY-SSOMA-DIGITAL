@@ -24,6 +24,17 @@ class AdminAuthService {
   }
 
   Future<String> configure(String password) async {
+    final recoveryCode = await _saveCredentials(password);
+    _sessionAuthorized = true;
+    await AuditService().record(
+      category: 'SEGURIDAD',
+      action: 'CREDENCIALES DE ADMINISTRADOR CONFIGURADAS',
+      detail: 'Se configuró la contraseña y se emitió un código de recuperación.',
+    );
+    return recoveryCode;
+  }
+
+  Future<String> _saveCredentials(String password) async {
     final salt = CredentialHasher.generateSalt();
     final hash = CredentialHasher.hash(password, salt);
     final recoveryCode = _generateRecoveryCode();
@@ -44,16 +55,24 @@ class AdminAuthService {
         DateTime.now().toUtc().toIso8601String(),
       );
     });
-    _sessionAuthorized = true;
-    await AuditService().record(
-      category: 'SEGURIDAD',
-      action: 'CREDENCIALES DE ADMINISTRADOR CONFIGURADAS',
-      detail: 'Se configuró la contraseña y se emitió un código de recuperación.',
-    );
     return recoveryCode;
   }
 
   Future<bool> login(String password) async {
+    final valid = await _verifyPassword(password);
+    _sessionAuthorized = valid;
+    await AuditService().record(
+      category: 'SEGURIDAD',
+      action: valid ? 'INICIO DE SESIÓN EXITOSO' : 'INTENTO DE ACCESO RECHAZADO',
+      detail: valid
+          ? 'El super administrador ingresó al panel.'
+          : 'Se rechazó un intento por contraseña incorrecta.',
+      actor: valid ? AuditService.admin : 'USUARIO NO AUTENTICADO',
+    );
+    return valid;
+  }
+
+  Future<bool> _verifyPassword(String password) async {
     final db = await AppDatabase.instance.database;
     final rows = await db.query(
       'app_settings',
@@ -71,16 +90,29 @@ class AdminAuthService {
       expected,
       CredentialHasher.hash(password, salt),
     );
-    _sessionAuthorized = valid;
+    return valid;
+  }
+
+  Future<String?> changePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
+    if (!await _verifyPassword(currentPassword)) {
+      await AuditService().record(
+        category: 'SEGURIDAD',
+        action: 'CAMBIO DE CONTRASEÑA RECHAZADO',
+        detail: 'La contraseña administrativa actual no coincidió.',
+      );
+      return null;
+    }
+    final recoveryCode = await _saveCredentials(newPassword);
+    _sessionAuthorized = true;
     await AuditService().record(
       category: 'SEGURIDAD',
-      action: valid ? 'INICIO DE SESIÓN EXITOSO' : 'INTENTO DE ACCESO RECHAZADO',
-      detail: valid
-          ? 'El super administrador ingresó al panel.'
-          : 'Se rechazó un intento por contraseña incorrecta.',
-      actor: valid ? AuditService.admin : 'USUARIO NO AUTENTICADO',
+      action: 'CONTRASEÑA DE ADMINISTRADOR CAMBIADA',
+      detail: 'Se actualizó la contraseña y se renovó el código de recuperación.',
     );
-    return valid;
+    return recoveryCode;
   }
 
   void logout() => _sessionAuthorized = false;

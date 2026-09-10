@@ -275,6 +275,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             icon: const Icon(Icons.backup_outlined),
             label: const Text('COPIAS DE SEGURIDAD Y RESTAURACIÓN'),
           ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.adminSecurity),
+            icon: const Icon(Icons.security_outlined),
+            label: const Text('SEGURIDAD DE LA CUENTA'),
+          ),
           const SizedBox(height: 12),
           Card(
             elevation: 0,
