@@ -8,8 +8,29 @@ import 'audit_service.dart';
 
 class AdminAuthService {
   static bool _sessionAuthorized = false;
+  static DateTime? _lastActivity;
+  static bool _redirectClaimed = false;
+  static const sessionTimeout = Duration(minutes: 15);
 
-  bool get sessionAuthorized => _sessionAuthorized;
+  bool get sessionAuthorized {
+    if (!_sessionAuthorized || _lastActivity == null) return false;
+    if (DateTime.now().difference(_lastActivity!) >= sessionTimeout) {
+      _sessionAuthorized = false;
+      _lastActivity = null;
+      return false;
+    }
+    return true;
+  }
+
+  void touchSession() {
+    if (_sessionAuthorized) _lastActivity = DateTime.now();
+  }
+
+  bool claimExpiredSessionRedirect() {
+    if (_redirectClaimed) return false;
+    _redirectClaimed = true;
+    return true;
+  }
 
   Future<bool> get isConfigured async {
     final db = await AppDatabase.instance.database;
@@ -26,6 +47,8 @@ class AdminAuthService {
   Future<String> configure(String password) async {
     final recoveryCode = await _saveCredentials(password);
     _sessionAuthorized = true;
+    _redirectClaimed = false;
+    touchSession();
     await AuditService().record(
       category: 'SEGURIDAD',
       action: 'CREDENCIALES DE ADMINISTRADOR CONFIGURADAS',
@@ -61,6 +84,8 @@ class AdminAuthService {
   Future<bool> login(String password) async {
     final valid = await _verifyPassword(password);
     _sessionAuthorized = valid;
+    if (valid) _redirectClaimed = false;
+    if (valid) touchSession();
     await AuditService().record(
       category: 'SEGURIDAD',
       action: valid ? 'INICIO DE SESIÓN EXITOSO' : 'INTENTO DE ACCESO RECHAZADO',
@@ -107,6 +132,8 @@ class AdminAuthService {
     }
     final recoveryCode = await _saveCredentials(newPassword);
     _sessionAuthorized = true;
+    _redirectClaimed = false;
+    touchSession();
     await AuditService().record(
       category: 'SEGURIDAD',
       action: 'CONTRASEÑA DE ADMINISTRADOR CAMBIADA',
@@ -115,7 +142,10 @@ class AdminAuthService {
     return recoveryCode;
   }
 
-  void logout() => _sessionAuthorized = false;
+  void logout() {
+    _sessionAuthorized = false;
+    _lastActivity = null;
+  }
 
   Future<String?> ensureRecoveryCode() async {
     final values = await _loadSettings([

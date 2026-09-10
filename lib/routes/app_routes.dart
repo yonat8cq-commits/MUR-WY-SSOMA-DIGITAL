@@ -14,6 +14,7 @@ import '../screens/admin/audit_log_page.dart';
 import '../screens/admin/backup_page.dart';
 import '../screens/admin/admin_security_page.dart';
 import '../screens/admin/sync_status_page.dart';
+import '../screens/admin/admin_session_guard.dart';
 
 class AppRoutes {
   static const login = '/';
@@ -35,18 +36,20 @@ class AppRoutes {
   static final Map<String, WidgetBuilder> routes = {
     login: (_) => const LoginPage(),
     workerHome: (_) => const WorkerHomePage(),
-    adminHome: (_) => const AdminDashboardPage(),
+    adminHome: (_) => _admin(const AdminDashboardPage()),
     adminAuth: (_) => const AdminAuthPage(),
-    signatureTracking: (_) => const SignatureTrackingPage(),
-    authorizedSignatures: (_) => const AuthorizedSignaturesPage(),
-    workersAdmin: (_) => const WorkersAdminPage(),
-    companiesAdmin: (_) => const CompaniesAdminPage(),
-    consentsAdmin: (_) => const ConsentsAdminPage(),
-    historicalDocuments: (_) => const HistoricalDocumentsPage(),
-    reminders: (_) => const RemindersPage(),
-    auditLog: (_) => const AuditLogPage(),
-    backup: (_) => const BackupPage(),
-    adminSecurity: (_) => const AdminSecurityPage(),
-    syncStatus: (_) => const SyncStatusPage(),
+    signatureTracking: (_) => _admin(const SignatureTrackingPage()),
+    authorizedSignatures: (_) => _admin(const AuthorizedSignaturesPage()),
+    workersAdmin: (_) => _admin(const WorkersAdminPage()),
+    companiesAdmin: (_) => _admin(const CompaniesAdminPage()),
+    consentsAdmin: (_) => _admin(const ConsentsAdminPage()),
+    historicalDocuments: (_) => _admin(const HistoricalDocumentsPage()),
+    reminders: (_) => _admin(const RemindersPage()),
+    auditLog: (_) => _admin(const AuditLogPage()),
+    backup: (_) => _admin(const BackupPage()),
+    adminSecurity: (_) => _admin(const AdminSecurityPage()),
+    syncStatus: (_) => _admin(const SyncStatusPage()),
   };
+
+  static Widget _admin(Widget page) => AdminSessionGuard(child: page);
 }

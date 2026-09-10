@@ -115,6 +115,15 @@ class _AdminSecurityPageState extends State<AdminSecurityPage> {
                         'La nueva contraseña debe tener al menos 10 caracteres, una letra y un número.',
                         textAlign: TextAlign.center,
                       ),
+                      const SizedBox(height: 10),
+                      const Card(
+                        color: Color(0xFFEAF3FA),
+                        child: ListTile(
+                          leading: Icon(Icons.timer_outlined),
+                          title: Text('Bloqueo automático activo'),
+                          subtitle: Text('El panel solicitará nuevamente tu contraseña después de 15 minutos sin actividad.'),
+                        ),
+                      ),
                       const SizedBox(height: 22),
                       TextFormField(
                         controller: _current,
