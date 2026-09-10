@@ -44,9 +44,15 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
-    final valid = _configured
-        ? await _service.login(_password.text)
-        : await _configure();
+    String? recoveryCode;
+    final bool valid;
+    if (_configured) {
+      valid = await _service.login(_password.text);
+      if (valid) recoveryCode = await _service.ensureRecoveryCode();
+    } else {
+      recoveryCode = await _service.configure(_password.text);
+      valid = true;
+    }
     if (!mounted) return;
     if (!valid) {
       setState(() => _loading = false);
@@ -55,16 +61,115 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
       );
       return;
     }
-    Navigator.pushNamedAndRemoveUntil(
+    if (recoveryCode != null) {
+      await _showRecoveryCode(recoveryCode);
+      if (!mounted) return;
+    }
+    _openAdmin();
+  }
+
+  void _openAdmin() => Navigator.pushNamedAndRemoveUntil(
       context,
       AppRoutes.adminHome,
       (route) => route.settings.name == AppRoutes.login,
     );
-  }
 
-  Future<bool> _configure() async {
-    await _service.configure(_password.text);
-    return true;
+  Future<void> _showRecoveryCode(String code) => showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          icon: const Icon(Icons.key, size: 48, color: Color(0xFFF3B41B)),
+          title: const Text('Guarda tu código de recuperación'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Este código se mostrará una sola vez. Anótalo y guárdalo fuera del celular.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              SelectableText(
+                code,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+              ),
+            ],
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('YA LO GUARDÉ'),
+            ),
+          ],
+        ),
+      );
+
+  Future<void> _recoverAccess() async {
+    final recovery = TextEditingController();
+    final newPassword = TextEditingController();
+    final confirmation = TextEditingController();
+    final result = await showDialog<List<String>>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Recuperar acceso'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: recovery,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(labelText: 'Código de recuperación', prefixIcon: Icon(Icons.key)),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: newPassword,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Nueva contraseña', prefixIcon: Icon(Icons.lock_outline)),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: confirmation,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Confirmar contraseña', prefixIcon: Icon(Icons.verified_user_outlined)),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('CANCELAR')),
+          FilledButton(
+            onPressed: () {
+              final password = newPassword.text;
+              if (recovery.text.trim().isEmpty || password.length < 10 || !RegExp(r'[A-Za-z]').hasMatch(password) || !RegExp(r'\d').hasMatch(password) || password != confirmation.text) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Verifica el código y usa una contraseña de 10 caracteres, con letra y número.')),
+                );
+                return;
+              }
+              Navigator.pop(dialogContext, [recovery.text, password]);
+            },
+            child: const Text('RESTABLECER'),
+          ),
+        ],
+      ),
+    );
+    recovery.dispose();
+    newPassword.dispose();
+    confirmation.dispose();
+    if (result == null) return;
+    setState(() => _loading = true);
+    final newCode = await _service.resetWithRecoveryCode(result[0], result[1]);
+    if (!mounted) return;
+    if (newCode == null) {
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('El código de recuperación no es válido.')),
+      );
+      return;
+    }
+    await _showRecoveryCode(newCode);
+    if (!mounted) return;
+    _openAdmin();
   }
 
   @override
@@ -143,6 +248,12 @@ class _AdminAuthPageState extends State<AdminAuthPage> {
                               icon: const Icon(Icons.login),
                               label: Text(_configured ? 'INGRESAR' : 'CREAR ACCESO SEGURO'),
                             ),
+                            if (_configured)
+                              TextButton.icon(
+                                onPressed: _loading ? null : _recoverAccess,
+                                icon: const Icon(Icons.key_outlined),
+                                label: const Text('OLVIDÉ MI CONTRASEÑA'),
+                              ),
                           ],
                         ),
                       ),
