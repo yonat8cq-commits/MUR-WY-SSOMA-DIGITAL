@@ -6,6 +6,7 @@ import '../../services/import_persistence_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/reminder_service.dart';
 import '../../services/admin_auth_service.dart';
+import '../../services/executive_dashboard_service.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -21,6 +22,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   bool _saving = false;
   ImportSaveSummary? _saveSummary;
   bool _checkingAccess = true;
+  ExecutiveSummary? _summary;
+  bool _loadingSummary = false;
 
   @override
   void initState() {
@@ -39,7 +42,19 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       return;
     }
     setState(() => _checkingAccess = false);
+    await _loadSummary();
     await _showAndroidReminders();
+  }
+
+  Future<void> _loadSummary() async {
+    if (mounted) setState(() => _loadingSummary = true);
+    final summary = await ExecutiveDashboardService().load();
+    if (mounted) {
+      setState(() {
+        _summary = summary;
+        _loadingSummary = false;
+      });
+    }
   }
 
   void _logout() {
@@ -104,6 +119,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         _saveSummary = summary;
         _saving = false;
       });
+      await _loadSummary();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Importación guardada y cuentas preparadas.'),
@@ -166,6 +182,30 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       body: ListView(
         padding: const EdgeInsets.all(18),
         children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text('Resumen ejecutivo SSOMA',
+                    style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800)),
+              ),
+              IconButton(
+                tooltip: 'Actualizar indicadores',
+                onPressed: _loadingSummary ? null : _loadSummary,
+                icon: const Icon(Icons.refresh),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Indicadores actualizados con la información guardada en este dispositivo.',
+            style: TextStyle(color: Color(0xFF626B7A)),
+          ),
+          const SizedBox(height: 14),
+          if (_loadingSummary && _summary == null)
+            const Center(child: CircularProgressIndicator())
+          else if (_summary != null)
+            _executivePanel(_summary!),
+          const SizedBox(height: 26),
           const Text(
             'Importación de capacitaciones',
             style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
@@ -418,6 +458,82 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       ),
     );
   }
+
+  Widget _executivePanel(ExecutiveSummary summary) {
+    final percentage = (summary.signatureProgress * 100).round();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Card(
+          color: const Color(0xFFEAF6EE),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(children: [
+                  const Icon(Icons.draw_outlined, color: Color(0xFF16743B)),
+                  const SizedBox(width: 8),
+                  const Expanded(child: Text('Avance general de firmas',
+                      style: TextStyle(fontWeight: FontWeight.w700))),
+                  Text('$percentage%', style: const TextStyle(
+                      fontSize: 22, fontWeight: FontWeight.w900)),
+                ]),
+                const SizedBox(height: 10),
+                LinearProgressIndicator(
+                  value: summary.signatureProgress,
+                  minHeight: 12,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                const SizedBox(height: 8),
+                Text('${summary.signed} firmas realizadas • ${summary.pending} pendientes'),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        LayoutBuilder(builder: (context, constraints) {
+          final width = constraints.maxWidth >= 700
+              ? (constraints.maxWidth - 24) / 4
+              : (constraints.maxWidth - 8) / 2;
+          return Wrap(spacing: 8, runSpacing: 8, children: [
+            _executiveMetric('Trabajadores', '${summary.workers}',
+                '${summary.activeWorkers} activos', Icons.groups_outlined,
+                const Color(0xFF1F4E78), width),
+            _executiveMetric('Capacitaciones', '${summary.trainings}',
+                '${summary.completed} completas', Icons.school_outlined,
+                const Color(0xFF5B3F8C), width),
+            _executiveMetric('Vencidas', '${summary.expired}',
+                'Con firmas pendientes', Icons.warning_amber_rounded,
+                const Color(0xFFB45309), width),
+            _executiveMetric('Cerradas', '${summary.closed}',
+                'Control documental', Icons.task_alt_outlined,
+                const Color(0xFF16743B), width),
+          ]);
+        }),
+      ],
+    );
+  }
+
+  Widget _executiveMetric(String title, String value, String subtitle,
+      IconData icon, Color color, double width) => SizedBox(
+        width: width,
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(icon, color: color, size: 28),
+              const SizedBox(height: 8),
+              Text(value, style: TextStyle(fontSize: 25,
+                  fontWeight: FontWeight.w900, color: color)),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 3),
+              Text(subtitle, style: const TextStyle(
+                  fontSize: 11, color: Color(0xFF626B7A))),
+            ]),
+          ),
+        ),
+      );
 
   Widget _metric(String label, String value, MaterialColor color) => SizedBox(
         width: 155,
