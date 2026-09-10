@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import '../database/app_database.dart';
 import 'excel_service.dart';
 import 'audit_service.dart';
+import 'sync_outbox_service.dart';
 
 class ImportSaveSummary {
   final int workers;
@@ -58,6 +59,18 @@ class ImportPersistenceService {
           where: 'training_key = ?',
           whereArgs: [training.key],
         );
+        await SyncOutboxService().enqueueWith(
+          transaction,
+          entityType: 'TRAINING',
+          entityId: training.key,
+          operation: 'UPSERT',
+          payload: {
+            'course': training.course,
+            'training_date': training.date,
+            'approved_participants': training.approvedParticipants,
+            'status': 'BORRADOR',
+          },
+        );
       }
 
       for (final participant in result.participants) {
@@ -88,6 +101,19 @@ class ImportPersistenceService {
           where: 'dni = ?',
           whereArgs: [participant.dni],
         );
+        await SyncOutboxService().enqueueWith(
+          transaction,
+          entityType: 'WORKER',
+          entityId: participant.dni,
+          operation: 'UPSERT',
+          payload: {
+            'dni': participant.dni,
+            'full_name': participant.fullName,
+            'company': participant.company,
+            'area': participant.area,
+            'position': participant.position,
+          },
+        );
         final inserted = await transaction.insert(
           'participantes_capacitacion',
           {
@@ -99,6 +125,17 @@ class ImportPersistenceService {
           conflictAlgorithm: ConflictAlgorithm.ignore,
         );
         if (inserted > 0) assignments++;
+        await SyncOutboxService().enqueueWith(
+          transaction,
+          entityType: 'TRAINING_PARTICIPANT',
+          entityId: '${participant.trainingKey}_${participant.dni}',
+          operation: 'UPSERT',
+          payload: {
+            'training_id': participant.trainingKey,
+            'dni': participant.dni,
+            'signature_status': 'PENDIENTE',
+          },
+        );
       }
     });
 

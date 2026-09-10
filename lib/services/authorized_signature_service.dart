@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:sqflite/sqflite.dart';
 
 import '../database/app_database.dart';
+import 'sync_outbox_service.dart';
 
 class AuthorizedSigner {
   final String id;
@@ -62,6 +63,12 @@ class AuthorizedSignatureService {
       where: 'signer_id = ?',
       whereArgs: [id],
     );
+    await SyncOutboxService().enqueue(
+      entityType: 'AUTHORIZED_SIGNATURE',
+      entityId: id,
+      operation: 'UPSERT',
+      payload: {'signer_id': id, 'signature_source': 'firmas_autorizadas'},
+    );
   }
 
   Future<String?> trainerIdFor(String trainingKey) async {
@@ -87,6 +94,16 @@ class AuthorizedSignatureService {
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await SyncOutboxService().enqueue(
+      entityType: 'TRAINING_SIGNERS',
+      entityId: trainingKey,
+      operation: 'UPSERT',
+      payload: {
+        'training_id': trainingKey,
+        'trainer_id': trainerId,
+        'responsible_id': 'jhonathan',
+      },
     );
   }
 

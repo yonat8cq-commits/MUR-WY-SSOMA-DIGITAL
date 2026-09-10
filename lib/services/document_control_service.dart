@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../database/app_database.dart';
 import 'audit_service.dart';
+import 'sync_outbox_service.dart';
 
 class DocumentControl {
   final String trainingKey;
@@ -120,6 +121,12 @@ class DocumentControlService {
       targetType: 'CAPACITACIÓN',
       targetId: trainingKey,
     );
+    await SyncOutboxService().enqueue(
+      entityType: 'DOCUMENT_CONTROL',
+      entityId: trainingKey,
+      operation: 'CLOSE',
+      payload: {'training_id': trainingKey, 'status': 'CERRADO', 'version': nextVersion},
+    );
   }
 
   Future<void> reopen(
@@ -157,6 +164,12 @@ class DocumentControlService {
       detail: 'Motivo: $reason',
       targetType: 'CAPACITACIÓN',
       targetId: trainingKey,
+    );
+    await SyncOutboxService().enqueue(
+      entityType: 'DOCUMENT_CONTROL',
+      entityId: trainingKey,
+      operation: 'REOPEN',
+      payload: {'training_id': trainingKey, 'status': 'EN_FIRMA', 'reason': reason},
     );
   }
 

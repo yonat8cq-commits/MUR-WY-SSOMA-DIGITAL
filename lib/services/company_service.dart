@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:sqflite/sqflite.dart';
 
 import '../database/app_database.dart';
+import 'sync_outbox_service.dart';
 
 class CompanyProfile {
   final String id;
@@ -81,6 +82,12 @@ class CompanyService {
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+    await SyncOutboxService().enqueue(
+      entityType: 'TRAINING_COMPANY',
+      entityId: trainingKey,
+      operation: 'UPSERT',
+      payload: {'training_id': trainingKey, 'company_id': companyId},
+    );
   }
 
   Future<void> save({
@@ -119,6 +126,19 @@ class CompanyService {
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    await SyncOutboxService().enqueue(
+      entityType: 'COMPANY',
+      entityId: companyId,
+      operation: 'UPSERT',
+      payload: {
+        'business_name': businessName,
+        'ruc': ruc,
+        'address': address,
+        'economic_activity': economicActivity,
+        'employee_count': employeeCount,
+        'logo_source': 'empresas',
+      },
     );
   }
 

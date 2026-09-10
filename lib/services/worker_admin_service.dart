@@ -1,5 +1,6 @@
 import '../database/app_database.dart';
 import 'audit_service.dart';
+import 'sync_outbox_service.dart';
 
 class WorkerAdminItem {
   final String dni;
@@ -81,6 +82,12 @@ class WorkerAdminService {
       targetType: 'TRABAJADOR',
       targetId: dni,
     );
+    await SyncOutboxService().enqueue(
+      entityType: 'WORKER',
+      entityId: dni,
+      operation: 'STATUS',
+      payload: {'dni': dni, 'account_status': active ? 'ACTIVO' : 'INACTIVO'},
+    );
   }
 
   Future<void> resetTemporaryPassword(String dni) async {
@@ -109,6 +116,12 @@ class WorkerAdminService {
       detail: 'El trabajador deberá crear una nueva contraseña en su próximo ingreso.',
       targetType: 'TRABAJADOR',
       targetId: dni,
+    );
+    await SyncOutboxService().enqueue(
+      entityType: 'WORKER',
+      entityId: dni,
+      operation: 'PASSWORD_RESET_REQUIRED',
+      payload: {'dni': dni, 'requires_password_change': true},
     );
   }
 }

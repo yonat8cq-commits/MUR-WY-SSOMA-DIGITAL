@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:sqflite/sqflite.dart';
 import '../database/app_database.dart';
 import 'document_control_service.dart';
+import 'sync_outbox_service.dart';
 
 class OfflineWorkflowService {
   static final OfflineWorkflowService instance = OfflineWorkflowService._();
@@ -51,12 +52,27 @@ class OfflineWorkflowService {
 
   Future<void> saveConsent(String dni, Uint8List signaturePng) async {
     final db = await AppDatabase.instance.database;
-    await db.insert('consentimientos', {
-      'dni': dni,
-      'version': '1.0',
-      'accepted_at': DateTime.now().toUtc().toIso8601String(),
-      'signature_png': signaturePng,
-      'sync_status': 0,
+    final acceptedAt = DateTime.now().toUtc().toIso8601String();
+    await db.transaction((transaction) async {
+      await transaction.insert('consentimientos', {
+        'dni': dni,
+        'version': '1.0',
+        'accepted_at': acceptedAt,
+        'signature_png': signaturePng,
+        'sync_status': 0,
+      });
+      await SyncOutboxService().enqueueWith(
+        transaction,
+        entityType: 'CONSENT',
+        entityId: '${dni}_1.0',
+        operation: 'UPSERT',
+        payload: {
+          'dni': dni,
+          'version': '1.0',
+          'accepted_at': acceptedAt,
+          'signature_source': 'consentimientos',
+        },
+      );
     });
   }
 
@@ -102,24 +118,39 @@ class OfflineWorkflowService {
       throw StateError('El plazo de 40 días para firmar ya venció.');
     }
     final confirmedAt = DateTime.now().toUtc().toIso8601String();
-    await db.insert(
-      'confirmaciones_capacitacion',
-      {
-        'record_key': dni + '_' + trainingKey,
-        'dni': dni,
-        'training_key': trainingKey,
-        'confirmed_at': confirmedAt,
-        'signature_png': signaturePng,
-        'sync_status': 0,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-    await db.update(
-      'participantes_capacitacion',
-      {'signature_status': 'FIRMADO'},
-      where: 'training_key = ? AND dni = ?',
-      whereArgs: [trainingKey, dni],
-    );
+    final recordKey = '${dni}_$trainingKey';
+    await db.transaction((transaction) async {
+      await transaction.insert(
+        'confirmaciones_capacitacion',
+        {
+          'record_key': recordKey,
+          'dni': dni,
+          'training_key': trainingKey,
+          'confirmed_at': confirmedAt,
+          'signature_png': signaturePng,
+          'sync_status': 0,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      await transaction.update(
+        'participantes_capacitacion',
+        {'signature_status': 'FIRMADO'},
+        where: 'training_key = ? AND dni = ?',
+        whereArgs: [trainingKey, dni],
+      );
+      await SyncOutboxService().enqueueWith(
+        transaction,
+        entityType: 'CONFIRMATION',
+        entityId: recordKey,
+        operation: 'CREATE',
+        payload: {
+          'dni': dni,
+          'training_id': trainingKey,
+          'confirmed_at': confirmedAt,
+          'signature_source': 'confirmaciones_capacitacion',
+        },
+      );
+    });
   }
 
   Future<String?> _get(String key) async {
