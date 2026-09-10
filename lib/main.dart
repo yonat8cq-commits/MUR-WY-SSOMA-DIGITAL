@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'routes/app_routes.dart';
+import 'services/firebase_bootstrap_service.dart';
 import 'services/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await FirebaseBootstrapService.instance.initialize();
   await NotificationService.instance.initialize();
   runApp(const MurWySsomaApp());
 }

@@ -20,6 +20,11 @@ dependencies:
   signature: ^5.5.0
   flutter_local_notifications: ^17.2.4
   crypto: ^3.0.6
+  firebase_core: ^3.4.0
+  firebase_auth: ^5.2.0
+  cloud_firestore: ^5.4.0
+  firebase_storage: ^12.2.0
+  firebase_messaging: ^15.1.0
 
 
 dev_dependencies:

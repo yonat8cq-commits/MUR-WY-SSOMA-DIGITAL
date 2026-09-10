@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../services/firebase_bootstrap_service.dart';
 import '../../services/sync_status_service.dart';
 
 class SyncStatusPage extends StatefulWidget {
@@ -12,10 +13,23 @@ class SyncStatusPage extends StatefulWidget {
 class _SyncStatusPageState extends State<SyncStatusPage> {
   SyncStatus? _status;
 
+  FirebaseBootstrapService get _firebase => FirebaseBootstrapService.instance;
+
   @override
   void initState() {
     super.initState();
+    _firebase.addListener(_firebaseChanged);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _firebase.removeListener(_firebaseChanged);
+    super.dispose();
+  }
+
+  void _firebaseChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _load() async {
@@ -32,21 +46,32 @@ class _SyncStatusPageState extends State<SyncStatusPage> {
             const Icon(Icons.cloud_sync_outlined,
                 size: 72, color: Color(0xFF1F4E78)),
             const SizedBox(height: 12),
-            const Text('Firebase preparado',
+            Text(_firebase.isReady ? 'Firebase conectado' : 'Firebase sin conexión',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
-            const Text(
-              'La estructura segura y la cola offline están listas. La conexión se activará al incorporar la configuración oficial del proyecto Firebase.',
+            Text(
+              _firebase.isReady
+                  ? 'La aplicación reconoce el proyecto mur-wy-ssoma-digital. Las acciones offline permanecen protegidas hasta que se habiliten el acceso y los servicios centrales.'
+                  : 'La aplicación continuará trabajando de forma local y conservará las acciones pendientes para enviarlas cuando Firebase esté disponible.',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 22),
             Card(
-              color: const Color(0xFFFFF6DA),
-              child: const ListTile(
-                leading: Icon(Icons.info_outline, color: Color(0xFF9A6700)),
-                title: Text('Configuración pendiente'),
-                subtitle: Text('Falta incorporar google-services.json y habilitar Authentication, Firestore y Storage.'),
+              color: _firebase.isReady
+                  ? const Color(0xFFE7F6EC)
+                  : const Color(0xFFFFF6DA),
+              child: ListTile(
+                leading: Icon(
+                  _firebase.isReady ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
+                  color: _firebase.isReady ? const Color(0xFF18753C) : const Color(0xFF9A6700),
+                ),
+                title: Text(_firebase.isReady
+                    ? 'Configuración Android instalada'
+                    : 'Modo local activo'),
+                subtitle: Text(_firebase.isReady
+                    ? 'Siguiente: habilitar Authentication, Firestore y Storage en Firebase Console.'
+                    : 'No se perderán firmas ni confirmaciones por falta de internet.'),
               ),
             ),
             const SizedBox(height: 14),
