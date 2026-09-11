@@ -1,0 +1,52 @@
+name: DESPLEGAR FIREBASE SEGURO
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/mvp-trabajador-fase-1
+    paths:
+      - .firebase-deploy-trigger
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate Firebase credential
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          if [ -z "${FIREBASE_SERVICE_ACCOUNT_JSON}" ]; then
+            echo "Missing repository secret FIREBASE_SERVICE_ACCOUNT_JSON"
+            exit 1
+          fi
+          CREDENTIAL_FILE="${RUNNER_TEMP}/firebase-service-account.json"
+          printf '%s' "${FIREBASE_SERVICE_ACCOUNT_JSON}" > "${CREDENTIAL_FILE}"
+          node -e "const fs=require('fs'); const value=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); if(value.project_id!=='mur-wy-ssoma-digital') process.exit(1)" "${CREDENTIAL_FILE}"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${CREDENTIAL_FILE}" >> "${GITHUB_ENV}"
+
+      - name: Install Firebase CLI
+        run: npm install --global firebase-tools
+
+      - name: Deploy Firestore rules and indexes
+        run: firebase deploy --project mur-wy-ssoma-digital --only firestore:rules,firestore:indexes
+
+      - name: Remove temporary credential
+        if: always()
+        run: |
+          CREDENTIAL_FILE="${RUNNER_TEMP}/firebase-service-account.json"
+          if [ -f "${CREDENTIAL_FILE}" ]; then
+            shred -u "${CREDENTIAL_FILE}"
+          fi
