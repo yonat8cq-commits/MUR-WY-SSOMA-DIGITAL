@@ -155,7 +155,7 @@ class PdfService {
       return FileSaver.instance.saveAs(
         name: baseName,
         bytes: bytes,
-        fileExtension: 'pdf',
+        ext: 'pdf',
         mimeType: MimeType.pdf,
       );
     }
