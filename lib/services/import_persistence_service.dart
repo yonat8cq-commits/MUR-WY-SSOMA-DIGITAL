@@ -24,9 +24,39 @@ class ImportPersistenceService {
     final db = await AppDatabase.instance.database;
     final now = DateTime.now().toUtc().toIso8601String();
     final workerIds = <String>{};
-    var assignments = 0;
+    final assignmentIds = <String>{};
+    final participantsByTraining = <String, Set<String>>{};
+    for (final participant in result.participants) {
+      participantsByTraining
+          .putIfAbsent(participant.trainingKey, () => <String>{})
+          .add(participant.dni);
+      assignmentIds.add('${participant.trainingKey}_${participant.dni}');
+    }
 
     await db.transaction((transaction) async {
+      // El Excel nuevo pasa a ser la campaña visible. Los cursos anteriores
+      // se conservan como historial y no contaminan los indicadores actuales.
+      final previousTrainings = await transaction.query(
+        'capacitaciones_importadas',
+        columns: ['training_key'],
+        where: "status != 'ARCHIVADO'",
+      );
+      await transaction.update(
+        'capacitaciones_importadas',
+        {'status': 'ARCHIVADO', 'updated_at': now},
+        where: "status != 'ARCHIVADO'",
+      );
+      for (final previous in previousTrainings) {
+        final key = previous['training_key'] as String;
+        await SyncOutboxService().enqueueWith(
+          transaction,
+          entityType: 'TRAINING',
+          entityId: key,
+          operation: 'UPSERT',
+          payload: {'status': 'ARCHIVADO'},
+        );
+      }
+
       await transaction.insert('importaciones_tecsup', {
         'file_name': fileName,
         'imported_at': now,
@@ -54,11 +84,21 @@ class ImportPersistenceService {
             'course': training.course,
             'training_date': training.date,
             'approved_participants': training.approvedParticipants,
+            'status': 'BORRADOR',
             'updated_at': now,
           },
           where: 'training_key = ?',
           whereArgs: [training.key],
         );
+        final currentDnis = participantsByTraining[training.key] ?? <String>{};
+        if (currentDnis.isNotEmpty) {
+          await transaction.delete(
+            'participantes_capacitacion',
+            where:
+                'training_key = ? AND dni NOT IN (${List.filled(currentDnis.length, '?').join(',')})',
+            whereArgs: [training.key, ...currentDnis],
+          );
+        }
         await SyncOutboxService().enqueueWith(
           transaction,
           entityType: 'TRAINING',
@@ -114,7 +154,7 @@ class ImportPersistenceService {
             'position': participant.position,
           },
         );
-        final inserted = await transaction.insert(
+        await transaction.insert(
           'participantes_capacitacion',
           {
             'training_key': participant.trainingKey,
@@ -124,7 +164,6 @@ class ImportPersistenceService {
           },
           conflictAlgorithm: ConflictAlgorithm.ignore,
         );
-        if (inserted > 0) assignments++;
         await SyncOutboxService().enqueueWith(
           transaction,
           entityType: 'TRAINING_PARTICIPANT',
@@ -149,7 +188,7 @@ class ImportPersistenceService {
     return ImportSaveSummary(
       workers: workerIds.length,
       trainings: result.trainings.length,
-      assignments: assignments,
+      assignments: assignmentIds.length,
     );
   }
 }

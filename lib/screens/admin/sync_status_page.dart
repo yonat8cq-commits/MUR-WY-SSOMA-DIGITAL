@@ -88,7 +88,7 @@ class _SyncStatusPageState extends State<SyncStatusPage> {
                     ? 'Configuración Android instalada'
                     : 'Modo local activo'),
                 subtitle: Text(_firebase.isReady
-                    ? 'Authentication está preparado. Firestore y Storage recibirán la cola al habilitarlos y desplegar las reglas.'
+                    ? 'Authentication y Firestore están preparados para recibir la cola de sincronización.'
                     : 'No se perderán firmas ni confirmaciones por falta de internet.'),
               ),
             ),

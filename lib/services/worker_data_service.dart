@@ -91,7 +91,7 @@ class WorkerDataService {
         ON c.training_key = p.training_key
       LEFT JOIN confirmaciones_capacitacion f
         ON f.training_key = p.training_key AND f.dni = p.dni
-      WHERE p.dni = ?
+      WHERE p.dni = ? AND c.status != 'ARCHIVADO'
       ORDER BY c.training_date DESC, c.course ASC
       ''',
       [dni],

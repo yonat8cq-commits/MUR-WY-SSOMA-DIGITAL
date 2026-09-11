@@ -3,6 +3,7 @@ import '../../routes/app_routes.dart';
 import '../../services/offline_workflow_service.dart';
 import '../../services/password_service.dart';
 import '../../services/firebase_auth_service.dart';
+import '../../services/remembered_credentials_service.dart';
 import 'consent_page.dart';
 
 class ChangePasswordPage extends StatefulWidget {
@@ -33,6 +34,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     setState(() => _saving = true);
     await PasswordService().setPassword(widget.dni, _password.text);
     await FirebaseAuthService.instance.updateCurrentPassword(_password.text);
+    await RememberedCredentialsService().updatePassword(
+      widget.dni,
+      _password.text,
+    );
     await OfflineWorkflowService.instance.markPasswordChanged(widget.dni);
     if (!mounted) return;
     Navigator.pushReplacement(

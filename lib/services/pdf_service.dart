@@ -1,5 +1,7 @@
 import 'dart:typed_data';
+import 'dart:io';
 
+import 'package:file_saver/file_saver.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -47,7 +49,10 @@ class FsgiRecord {
 class PdfService {
   static const _border = PdfColor.fromInt(0xFF222222);
 
-  Future<FsgiRecord> loadRecord(String trainingKey) async {
+  Future<FsgiRecord> loadRecord(
+    String trainingKey, {
+    bool signedOnly = false,
+  }) async {
     final db = await AppDatabase.instance.database;
     final trainingRows = await db.query(
       'capacitaciones_importadas',
@@ -68,6 +73,7 @@ class PdfService {
       LEFT JOIN confirmaciones_capacitacion f
         ON f.training_key = p.training_key AND f.dni = p.dni
       WHERE p.training_key = ?
+        ${signedOnly ? 'AND f.record_key IS NOT NULL' : ''}
       ORDER BY w.full_name ASC
       ''',
       [trainingKey],
@@ -98,8 +104,14 @@ class PdfService {
     );
   }
 
-  Future<Uint8List> generateFsgi(String trainingKey) async {
-    final record = await loadRecord(trainingKey);
+  Future<Uint8List> generateFsgi(
+    String trainingKey, {
+    bool signedOnly = false,
+  }) async {
+    final record = await loadRecord(trainingKey, signedOnly: signedOnly);
+    if (signedOnly && record.participants.isEmpty) {
+      throw StateError('Todavía no existe ninguna firma para descargar.');
+    }
     final document = pw.Document();
     final totalPages = record.participants.isEmpty
         ? 1
@@ -128,15 +140,27 @@ class PdfService {
     return document.save();
   }
 
-  Future<String?> saveFsgi(String trainingKey) async {
-    final record = await loadRecord(trainingKey);
-    final bytes = await generateFsgi(trainingKey);
+  Future<String?> saveFsgi(
+    String trainingKey, {
+    bool signedOnly = false,
+  }) async {
+    final record = await loadRecord(trainingKey, signedOnly: signedOnly);
+    final bytes = await generateFsgi(trainingKey, signedOnly: signedOnly);
     final safeCourse = record.course
         .replaceAll(RegExp(r'[^A-Za-z0-9ÁÉÍÓÚÑáéíóúñ]+'), '_')
         .replaceAll(RegExp(r'^_+|_+$'), '');
+    final baseName =
+        'F-SGI-04-01_${safeCourse.isEmpty ? 'capacitacion' : safeCourse}${signedOnly ? '_firmas_disponibles' : ''}';
+    if (Platform.isAndroid) {
+      return FileSaver.instance.saveAs(
+        name: baseName,
+        bytes: bytes,
+        fileExtension: 'pdf',
+        mimeType: MimeType.pdf,
+      );
+    }
     final location = await getSaveLocation(
-      suggestedName:
-          'F-SGI-04-01_${safeCourse.isEmpty ? 'capacitacion' : safeCourse}.pdf',
+      suggestedName: '$baseName.pdf',
       acceptedTypeGroups: const [
         XTypeGroup(label: 'Documento PDF', extensions: ['pdf']),
       ],

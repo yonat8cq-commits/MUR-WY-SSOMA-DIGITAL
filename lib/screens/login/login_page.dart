@@ -5,6 +5,7 @@ import '../../services/worker_data_service.dart';
 import '../../services/worker_admin_service.dart';
 import '../../services/password_service.dart';
 import '../../services/firebase_auth_service.dart';
+import '../../services/remembered_credentials_service.dart';
 import '../onboarding/change_password_page.dart';
 import '../onboarding/consent_page.dart';
 
@@ -22,6 +23,23 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
   bool _loading = false;
   bool _sharedDevice = false;
+  bool _rememberPassword = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRememberedCredentials();
+  }
+
+  Future<void> _loadRememberedCredentials() async {
+    final credentials = await RememberedCredentialsService().load();
+    if (!mounted || credentials == null) return;
+    setState(() {
+      _dniController.text = credentials.dni;
+      _passwordController.text = credentials.password;
+      _rememberPassword = true;
+    });
+  }
 
   @override
   void dispose() {
@@ -85,6 +103,14 @@ class _LoginPageState extends State<LoginPage> {
     final workflow = OfflineWorkflowService.instance;
     await workflow.setSharedDeviceMode(_sharedDevice);
     await workflow.openSession(dni);
+    if (_rememberPassword && !_sharedDevice) {
+      await RememberedCredentialsService().save(
+        dni,
+        _passwordController.text,
+      );
+    } else {
+      await RememberedCredentialsService().clear();
+    }
     final changed = profile == null
         ? await workflow.passwordWasChanged(dni)
         : !profile.requiresPasswordChange;
@@ -117,15 +143,28 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF15191F),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF11151A), Color(0xFF303740)],
+            ),
+          ),
+          child: Center(
+            child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 440),
               child: Card(
-                elevation: 0,
+                elevation: 18,
                 color: Colors.white,
+                shadowColor: Colors.black54,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(28),
                   child: Form(
@@ -133,12 +172,9 @@ class _LoginPageState extends State<LoginPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Align(
-                          alignment: Alignment.centerLeft,
-                          child: Icon(Icons.health_and_safety_rounded, size: 64, color: Color(0xFFF3B41B)),
-                        ),
+                        const _MurWyBrand(),
                         const SizedBox(height: 20),
-                        Text('MUR WY SSOMA DIGITAL', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                        Text('MUR WY SSOMA DIGITAL', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900, color: const Color(0xFF252A30))),
                         const SizedBox(height: 8),
                         const Text('Ingresa para revisar y firmar tus capacitaciones.', style: TextStyle(color: Color(0xFF626B7A), fontSize: 16)),
                         const SizedBox(height: 28),
@@ -166,10 +202,33 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         const SizedBox(height: 10),
                         CheckboxListTile(
-                          value: _sharedDevice,
-                          onChanged: (value) => setState(
-                            () => _sharedDevice = value ?? false,
+                          value: _rememberPassword,
+                          onChanged: _sharedDevice
+                              ? null
+                              : (value) => setState(
+                                    () => _rememberPassword = value ?? false,
+                                  ),
+                          contentPadding: EdgeInsets.zero,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          title: const Text(
+                            'Recordar DNI y contraseña',
+                            style: TextStyle(fontWeight: FontWeight.w700),
                           ),
+                          subtitle: const Text(
+                            'Se guardarán cifrados únicamente en este celular.',
+                          ),
+                        ),
+                        CheckboxListTile(
+                          value: _sharedDevice,
+                          onChanged: (value) {
+                            setState(() {
+                              _sharedDevice = value ?? false;
+                              if (_sharedDevice) _rememberPassword = false;
+                            });
+                            if (_sharedDevice) {
+                              RememberedCredentialsService().clear();
+                            }
+                          },
                           contentPadding: EdgeInsets.zero,
                           controlAffinity: ListTileControlAffinity.leading,
                           title: const Text(
@@ -203,9 +262,87 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ),
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+class _MurWyBrand extends StatelessWidget {
+  const _MurWyBrand();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const SizedBox(
+          width: 76,
+          height: 76,
+          child: CustomPaint(painter: _MurWyMarkPainter()),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'MUR',
+                style: TextStyle(
+                  fontSize: 42,
+                  height: .9,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
+                  color: Color(0xFF36383B),
+                ),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                'SERVICIOS MINEROS,\nMANTENIMIENTO Y TRANSPORTE',
+                style: TextStyle(
+                  fontSize: 8.5,
+                  height: 1.05,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: .8,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MurWyMarkPainter extends CustomPainter {
+  const _MurWyMarkPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final yellow = Paint()..color = const Color(0xFFF3B41B);
+    final graphite = Paint()..color = const Color(0xFF3A3C3F);
+    final top = Path()
+      ..moveTo(size.width * .5, 0)
+      ..lineTo(size.width * .86, size.height * .55)
+      ..lineTo(size.width * .5, size.height * .43)
+      ..lineTo(size.width * .14, size.height * .55)
+      ..close();
+    final bottom = Path()
+      ..moveTo(size.width * .04, size.height)
+      ..lineTo(size.width * .32, size.height * .62)
+      ..lineTo(size.width * .5, size.height * .49)
+      ..lineTo(size.width * .68, size.height * .62)
+      ..lineTo(size.width * .96, size.height)
+      ..lineTo(size.width * .68, size.height)
+      ..lineTo(size.width * .5, size.height * .72)
+      ..lineTo(size.width * .32, size.height)
+      ..close();
+    canvas.drawPath(top, yellow);
+    canvas.drawPath(bottom, graphite);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

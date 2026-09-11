@@ -172,12 +172,29 @@ class _TrainingProgressDetailPageState
   }
 
   Future<void> _exportPdf() async {
+    final signed = _participants.where((item) => item.signed).length;
+    final pending = _participants.length - signed;
+    if (signed == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Todavía no existe ninguna firma para descargar.')),
+      );
+      return;
+    }
     setState(() => _exporting = true);
     try {
-      final path = await PdfService().saveFsgi(widget.training.key);
+      final path = await PdfService().saveFsgi(
+        widget.training.key,
+        signedOnly: pending > 0,
+      );
       if (!mounted || path == null) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Registro guardado en: $path')),
+        SnackBar(
+          content: Text(
+            pending > 0
+                ? 'Registro parcial guardado con $signed firmas: $path'
+                : 'Registro completo guardado en: $path',
+          ),
+        ),
       );
     } catch (error) {
       if (!mounted) return;
@@ -318,9 +335,20 @@ class _TrainingProgressDetailPageState
                   label: Text(
                     _exporting
                         ? 'Generando registro...'
-                        : 'Descargar F-SGI-04-01',
+                        : pending > 0
+                            ? 'DESCARGAR REGISTRO PARCIAL ($signed FIRMAS)'
+                            : 'DESCARGAR F-SGI-04-01 COMPLETO',
                   ),
                 ),
+                if (pending > 0)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child: Text(
+                      'El PDF incluirá únicamente a quienes ya firmaron. Los pendientes continuarán habilitados.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12, color: Color(0xFF626B7A)),
+                    ),
+                  ),
                 const SizedBox(height: 8),
                 if (_control?.isClosed == true)
                   OutlinedButton.icon(
