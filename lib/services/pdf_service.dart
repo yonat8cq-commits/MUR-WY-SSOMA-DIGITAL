@@ -81,8 +81,10 @@ class PdfService {
     );
     final signatureService = AuthorizedSignatureService();
     final trainerId = await signatureService.trainerIdFor(trainingKey);
+    final responsibleId =
+        await signatureService.responsibleIdFor(trainingKey);
     final trainer = await signatureService.loadSigner(trainerId);
-    final responsible = await signatureService.loadSigner('jhonathan');
+    final responsible = await signatureService.loadSigner(responsibleId);
     final company = await CompanyService().companyForTraining(trainingKey);
     return FsgiRecord(
       course: trainingRows.first['course'] as String? ?? '',
@@ -146,7 +148,6 @@ class PdfService {
             record,
             pageParticipants,
             start,
-            pageIndex,
             template,
           ),
         ),
@@ -194,7 +195,6 @@ class PdfService {
     FsgiRecord record,
     List<FsgiParticipant> participants,
     int start,
-    int pageIndex,
     pw.MemoryImage template,
   ) {
     const rowTop = 102.62;
@@ -203,44 +203,55 @@ class PdfService {
       pw.Positioned.fill(
         child: pw.Image(template, fit: pw.BoxFit.fill),
       ),
-      _cellText(record.course, 68, 56.7, 65, 7.1, size: 6.3, bold: true),
+      _cellText(record.course, 68, 56.7, 65, 7.1, size: 7.4, bold: true),
       _cellText(record.trainer?.fullName ?? 'NO ASIGNADO', 68, 63.3, 62, 7,
-          size: 6.0),
+          size: 7.0, bold: true),
       _cellText(record.trainer?.position ?? '', 68, 70.7, 62, 7,
-          size: 6.0),
+          size: 6.8, bold: true),
       _cellText(record.company.businessName, 68, 77.8, 62, 7,
-          size: 6.0),
+          size: 6.8, bold: true),
       _cellText(record.date, 153, 70.7, 39, 7,
-          size: 6.0, align: pw.TextAlign.center),
-      _cellText(record.hours, 163, 77.8, 29, 7,
-          size: 6.2, align: pw.TextAlign.center),
-      _cellText(record.participants.length.toString(), 171, 51.7, 29.8, 5.8,
           size: 7.0, bold: true, align: pw.TextAlign.center),
+      _cellText(_hoursLabel(record.hours), 160.8, 77.5, 33.5, 7.5,
+          size: 8.2, bold: true, align: pw.TextAlign.center),
+      _cellText(
+          (record.company.employeeCount > 0 ? record.company.employeeCount : 78)
+              .toString(),
+          171,
+          51.7,
+          29.8,
+          5.8,
+          size: 8.2,
+          bold: true,
+          align: pw.TextAlign.center),
       _cellText('X', 36.4, 65.85, 5.2, 5.2,
           size: 8.0, bold: true, align: pw.TextAlign.center),
     ];
 
     final trainerSignature = record.trainer?.signaturePng;
     if (trainerSignature != null) {
-      widgets.add(_image(trainerSignature, 149, 60.2, 43, 9));
+      widgets.add(_image(trainerSignature, 151, 57.2, 36, 12,
+          fit: pw.BoxFit.fill));
+    }
+
+    for (var slot = 0; slot < 25; slot++) {
+      final y = rowTop + slot * rowHeight;
+      widgets.add(_whiteBox(9.55, y + .2, 4.62, rowHeight - .4));
+      widgets.add(_cellText(
+        (start + slot + 1).toString().padLeft(2, '0'),
+        9.36,
+        y,
+        5.0,
+        rowHeight,
+        size: 7.4,
+        bold: true,
+        align: pw.TextAlign.center,
+      ));
     }
 
     for (var index = 0; index < participants.length; index++) {
       final person = participants[index];
       final y = rowTop + index * rowHeight;
-      if (pageIndex > 0) {
-        widgets.add(_whiteBox(9.55, y + .2, 4.62, rowHeight - .4));
-        widgets.add(_cellText(
-          (start + index + 1).toString().padLeft(2, '0'),
-          9.36,
-          y,
-          5.0,
-          rowHeight,
-          size: 7.2,
-          bold: true,
-          align: pw.TextAlign.center,
-        ));
-      }
       widgets.addAll([
         _cellText(person.dni, 14.4, y, 20.65, rowHeight,
             size: 7.0, align: pw.TextAlign.center),
@@ -253,21 +264,23 @@ class PdfService {
             size: 6.0, align: pw.TextAlign.center),
       ]);
       if (person.signaturePng != null) {
-        widgets.add(_image(person.signaturePng!, 173.2, y + .3, 26, 6.45));
+        widgets.add(_image(person.signaturePng!, 173.2, y + .25, 26, 6.55,
+            fit: pw.BoxFit.fill));
       }
     }
 
     final responsible = record.responsible;
     widgets.addAll([
       _cellText(responsible?.fullName ?? 'CUTIPA QUISPE JHONATHAN', 31.5,
-          282.2, 90, 6.0, size: 6.2),
+          282.2, 90, 6.0, size: 7.0, bold: true),
       _cellText(responsible?.position ?? 'ASISTENTE SSOMA', 31.5, 289.8, 90,
-          6.0, size: 6.2),
+          6.0, size: 7.0, bold: true),
       _cellText(record.date, 151, 289.8, 40, 6.0,
-          size: 6.2, align: pw.TextAlign.center),
+          size: 7.0, bold: true, align: pw.TextAlign.center),
     ]);
     if (responsible?.signaturePng != null) {
-      widgets.add(_image(responsible!.signaturePng!, 143, 280.1, 38, 6.7));
+      widgets.add(_image(responsible!.signaturePng!, 147, 277.8, 35, 11.5,
+          fit: pw.BoxFit.fill));
     }
     return pw.Stack(children: widgets);
   }
@@ -325,15 +338,24 @@ class PdfService {
     double x,
     double y,
     double width,
-    double height,
-  ) =>
+    double height, {
+    pw.BoxFit fit = pw.BoxFit.contain,
+  }) =>
       pw.Positioned(
         left: x * PdfPageFormat.mm,
         top: y * PdfPageFormat.mm,
         child: pw.SizedBox(
           width: width * PdfPageFormat.mm,
           height: height * PdfPageFormat.mm,
-          child: pw.Image(pw.MemoryImage(bytes), fit: pw.BoxFit.contain),
+          child: pw.Image(pw.MemoryImage(bytes), fit: fit),
         ),
       );
+
+  String _hoursLabel(String value) {
+    final clean = value
+        .trim()
+        .replaceAll(RegExp(r'\s*h(?:oras?)?\s*$', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\.0$'), '');
+    return clean.isEmpty || clean == '—' ? '' : '$clean HORAS';
+  }
 }

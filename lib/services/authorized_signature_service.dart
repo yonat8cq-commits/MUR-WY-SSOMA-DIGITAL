@@ -53,6 +53,11 @@ class AuthorizedSignatureService {
         .toList();
   }
 
+  Future<List<AuthorizedSigner>> loadResponsibles() async {
+    final signers = await loadSigners();
+    return signers.where((signer) => signer.active).toList();
+  }
+
   Future<AuthorizedSigner?> loadSigner(String? id) async {
     if (id == null || id.isEmpty) return null;
     final db = await AppDatabase.instance.database;
@@ -108,14 +113,55 @@ class AuthorizedSignatureService {
     return rows.isEmpty ? null : rows.first['trainer_id'] as String?;
   }
 
-  Future<void> assignTrainer(String trainingKey, String trainerId) async {
+  Future<String> responsibleIdFor(String trainingKey) async {
     final db = await AppDatabase.instance.database;
+    final rows = await db.query(
+      'firmantes_capacitacion',
+      columns: ['responsible_id'],
+      where: 'training_key = ?',
+      whereArgs: [trainingKey],
+      limit: 1,
+    );
+    return rows.isEmpty
+        ? 'jhonathan'
+        : rows.first['responsible_id'] as String? ?? 'jhonathan';
+  }
+
+  Future<void> assignTrainer(String trainingKey, String trainerId) async {
+    await _assign(trainingKey, trainerId: trainerId);
+  }
+
+  Future<void> assignResponsible(
+    String trainingKey,
+    String responsibleId,
+  ) async {
+    await _assign(trainingKey, responsibleId: responsibleId);
+  }
+
+  Future<void> _assign(
+    String trainingKey, {
+    String? trainerId,
+    String? responsibleId,
+  }) async {
+    final db = await AppDatabase.instance.database;
+    final current = await db.query(
+      'firmantes_capacitacion',
+      where: 'training_key = ?',
+      whereArgs: [trainingKey],
+      limit: 1,
+    );
+    final selectedTrainer = trainerId ??
+        (current.isEmpty ? null : current.first['trainer_id'] as String?);
+    final selectedResponsible = responsibleId ??
+        (current.isEmpty
+            ? 'jhonathan'
+            : current.first['responsible_id'] as String? ?? 'jhonathan');
     await db.insert(
       'firmantes_capacitacion',
       {
         'training_key': trainingKey,
-        'trainer_id': trainerId,
-        'responsible_id': 'jhonathan',
+        'trainer_id': selectedTrainer,
+        'responsible_id': selectedResponsible,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
@@ -126,8 +172,8 @@ class AuthorizedSignatureService {
       operation: 'UPSERT',
       payload: {
         'training_id': trainingKey,
-        'trainer_id': trainerId,
-        'responsible_id': 'jhonathan',
+        'trainer_id': selectedTrainer,
+        'responsible_id': selectedResponsible,
       },
     );
   }

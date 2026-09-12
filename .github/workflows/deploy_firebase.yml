@@ -5,7 +5,10 @@ on:
   push:
     branches:
       - codex/mvp-trabajador-fase-1
+      - codex/fsgi-oficial-firmas-apk
     paths:
+      - firestore.rules
+      - firestore.indexes.json
       - .firebase-deploy-trigger
 
 permissions:

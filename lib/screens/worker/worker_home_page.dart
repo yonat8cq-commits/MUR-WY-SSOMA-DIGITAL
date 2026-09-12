@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../services/offline_workflow_service.dart';
 import '../../services/worker_data_service.dart';
 import '../../services/notification_service.dart';
+import '../../services/firebase_auth_service.dart';
+import '../../services/firebase_pull_service.dart';
+import '../../services/firebase_sync_service.dart';
 import 'training_detail_page.dart';
 
 class WorkerHomePage extends StatefulWidget {
@@ -17,6 +20,7 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
   WorkerProfile? _profile;
   List<AssignedTraining> _trainings = [];
   bool _sharedDevice = false;
+  bool _syncing = false;
 
   @override
   void initState() {
@@ -24,13 +28,32 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool refreshCentral = false}) async {
     final dni = await OfflineWorkflowService.instance.currentDni;
     if (dni == null) {
       if (mounted) {
         Navigator.pushNamedAndRemoveUntil(context, '/', (_) => false);
       }
       return;
+    }
+    if (refreshCentral && FirebaseAuthService.instance.hasCentralSession) {
+      if (mounted) setState(() => _syncing = true);
+      try {
+        await FirebasePullService.instance.pullWorkerWorkspace(dni);
+        await FirebaseSyncService.instance.syncPending();
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'No se pudo actualizar ahora. La información guardada sigue disponible.',
+              ),
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _syncing = false);
+      }
     }
     final shared = await OfflineWorkflowService.instance.sharedDeviceMode;
     final service = WorkerDataService();
@@ -87,6 +110,20 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Actualizar desde el panel central',
+            onPressed: _syncing ? null : () => _load(refreshCentral: true),
+            icon: _syncing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.sync),
+          ),
           IconButton(
             tooltip: 'Cerrar sesión',
             onPressed: _logout,

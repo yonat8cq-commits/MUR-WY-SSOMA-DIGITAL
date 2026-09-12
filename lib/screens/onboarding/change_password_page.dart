@@ -32,13 +32,30 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   Future<void> _continue() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
+    final centralSession = FirebaseAuthService.instance.hasCentralSession;
+    final centralUpdated =
+        await FirebaseAuthService.instance.updateCurrentPassword(_password.text);
+    if (centralSession && !centralUpdated) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No se pudo guardar la contraseña central. Revisa internet e inténtalo nuevamente.',
+          ),
+        ),
+      );
+      return;
+    }
     await PasswordService().setPassword(widget.dni, _password.text);
-    await FirebaseAuthService.instance.updateCurrentPassword(_password.text);
-    await RememberedCredentialsService().updatePassword(
-      widget.dni,
-      _password.text,
-    );
+    final shared = await OfflineWorkflowService.instance.sharedDeviceMode;
+    if (shared) {
+      await RememberedCredentialsService().clear();
+    } else {
+      await RememberedCredentialsService().save(widget.dni, _password.text);
+    }
     await OfflineWorkflowService.instance.markPasswordChanged(widget.dni);
+    await FirebaseAuthService.instance.markPasswordChanged(widget.dni);
     if (!mounted) return;
     Navigator.pushReplacement(
       context,

@@ -6,6 +6,7 @@ import '../../services/worker_admin_service.dart';
 import '../../services/password_service.dart';
 import '../../services/firebase_auth_service.dart';
 import '../../services/remembered_credentials_service.dart';
+import '../../services/firebase_pull_service.dart';
 import '../onboarding/change_password_page.dart';
 import '../onboarding/consent_page.dart';
 
@@ -23,7 +24,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
   bool _loading = false;
   bool _sharedDevice = false;
-  bool _rememberPassword = false;
+  bool _rememberPassword = true;
 
   @override
   void initState() {
@@ -51,23 +52,35 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
-    final dni = _dniController.text;
+    final dni = _dniController.text.trim();
     final workerData = WorkerDataService();
-    final hasWorkers = await workerData.hasImportedWorkers();
+    final centralLogin = await FirebaseAuthService.instance.signInWorker(
+      dni: dni,
+      password: _passwordController.text,
+    );
+    var centralDataUpdated = false;
+    if (centralLogin == CentralLoginResult.authenticated) {
+      try {
+        await FirebasePullService.instance.pullWorkerWorkspace(dni);
+        centralDataUpdated = true;
+      } catch (_) {
+        // Si ya existe una copia local, el trabajador puede continuar offline.
+      }
+    }
     final profile = await workerData.loadProfile(dni);
-    if (hasWorkers && profile == null) {
+    if (profile == null) {
       if (!mounted) return;
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'El DNI no está registrado en las capacitaciones importadas.',
+            'El DNI no está publicado en el sistema central. Pide a SSOMA que vuelva a cargar el Excel.',
           ),
         ),
       );
       return;
     }
-    if (profile != null && !profile.active) {
+    if (!profile.active) {
       if (!mounted) return;
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -77,7 +90,8 @@ class _LoginPageState extends State<LoginPage> {
       );
       return;
     }
-    if (profile?.requiresPasswordChange == true &&
+    if (profile.requiresPasswordChange &&
+        centralLogin != CentralLoginResult.authenticated &&
         _passwordController.text != WorkerAdminService.temporaryPassword) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -86,9 +100,9 @@ class _LoginPageState extends State<LoginPage> {
       );
       return;
     }
-    if (profile != null &&
-        !profile.requiresPasswordChange &&
-        !await PasswordService().verify(dni, _passwordController.text)) {
+    if (!profile.requiresPasswordChange &&
+        !await PasswordService().verify(dni, _passwordController.text) &&
+        centralLogin != CentralLoginResult.authenticated) {
       if (!mounted) return;
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -96,10 +110,11 @@ class _LoginPageState extends State<LoginPage> {
       );
       return;
     }
-    final centralLogin = await FirebaseAuthService.instance.signInWorker(
-      dni: dni,
-      password: _passwordController.text,
-    );
+    if (!profile.requiresPasswordChange &&
+        centralLogin == CentralLoginResult.authenticated &&
+        !await PasswordService().verify(dni, _passwordController.text)) {
+      await PasswordService().setPassword(dni, _passwordController.text);
+    }
     final workflow = OfflineWorkflowService.instance;
     await workflow.setSharedDeviceMode(_sharedDevice);
     await workflow.openSession(dni);
@@ -111,16 +126,14 @@ class _LoginPageState extends State<LoginPage> {
     } else {
       await RememberedCredentialsService().clear();
     }
-    final changed = profile == null
-        ? await workflow.passwordWasChanged(dni)
-        : !profile.requiresPasswordChange;
+    final changed = !profile.requiresPasswordChange;
     final consented = await workflow.consentWasAccepted(dni);
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(centralLogin == CentralLoginResult.authenticated
-            ? 'Sesión central protegida y conectada.'
+          content: Text(centralDataUpdated
+            ? 'Datos actualizados desde el panel central.'
             : 'Ingreso local: los cambios se sincronizarán al recuperar conexión.'),
       ),
     );

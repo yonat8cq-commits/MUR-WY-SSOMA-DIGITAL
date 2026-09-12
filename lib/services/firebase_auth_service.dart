@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'firebase_bootstrap_service.dart';
@@ -48,6 +49,23 @@ class FirebaseAuthService {
       await user.getIdToken(true);
       return true;
     } on FirebaseAuthException {
+      return false;
+    }
+  }
+
+  Future<bool> markPasswordChanged(String dni) async {
+    if (!hasCentralSession) return false;
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(dni).set(
+        {
+          'requires_password_change': false,
+          'account_status': 'ACTIVO',
+          'updated_at': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+      return true;
+    } on FirebaseException {
       return false;
     }
   }

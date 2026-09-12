@@ -20,7 +20,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 12,
+      version: 13,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE trabajadores (
@@ -93,6 +93,9 @@ class AppDatabase {
         }
         if (oldVersion < 12) {
           await _addTrainingHours(db);
+        }
+        if (oldVersion < 13) {
+          await _setCurrentMurWyEmployeeCount(db);
         }
       },
     );
@@ -171,6 +174,18 @@ class AppDatabase {
         "ALTER TABLE capacitaciones_importadas ADD COLUMN hours TEXT NOT NULL DEFAULT ''",
       );
     }
+  }
+
+  Future<void> _setCurrentMurWyEmployeeCount(Database db) async {
+    await db.update(
+      'empresas',
+      {
+        'employee_count': 78,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      },
+      where: 'company_id = ? AND employee_count IN (0, 79, 80)',
+      whereArgs: ['mur_wy'],
+    );
   }
 
   Future<void> _createHistoricalDocumentTables(Database db) async {
@@ -388,7 +403,7 @@ class AppDatabase {
         'address':
             'AV. MALECÓN CHECA NRO. 3777 URB. CAMPOY - SAN JUAN DE LURIGANCHO - LIMA',
         'economic_activity': 'MINERÍA',
-        'employee_count': 0,
+        'employee_count': 78,
         'active': 1,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       },

@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import '../database/app_database.dart';
 import 'audit_service.dart';
 import 'sync_outbox_service.dart';
+import 'authorized_signature_service.dart';
 
 class DocumentControl {
   final String trainingKey;
@@ -115,13 +116,17 @@ class DocumentControlService {
     if (control.isClosed) return;
     final now = DateTime.now().toUtc().toIso8601String();
     final nextVersion = control.version + 1;
+    final signatureService = AuthorizedSignatureService();
+    final responsibleId = await signatureService.responsibleIdFor(trainingKey);
+    final responsible = await signatureService.loadSigner(responsibleId);
+    final closedBy = responsible?.fullName ?? 'CUTIPA QUISPE JHONATHAN';
     await db.transaction((transaction) async {
       await transaction.update(
         'control_documental',
         {
           'status': 'CERRADO',
           'closed_at': now,
-          'closed_by': 'CUTIPA QUISPE JHONATHAN',
+          'closed_by': closedBy,
           'current_version': nextVersion,
           'updated_at': now,
         },
@@ -134,7 +139,7 @@ class DocumentControlService {
         'action': 'CIERRE',
         'reason': 'Registro cerrado por el administrador.',
         'created_at': now,
-        'created_by': 'CUTIPA QUISPE JHONATHAN',
+        'created_by': closedBy,
       });
     });
     await AuditService().record(

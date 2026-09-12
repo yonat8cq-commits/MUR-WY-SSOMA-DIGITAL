@@ -24,6 +24,8 @@ class _TrainingProgressDetailPageState
   bool _exporting = false;
   List<AuthorizedSigner> _trainers = [];
   String? _trainerId;
+  List<AuthorizedSigner> _responsibles = [];
+  String _responsibleId = 'jhonathan';
   DocumentControl? _control;
   List<RecordVersion> _history = [];
   List<CompanyProfile> _companies = [];
@@ -41,7 +43,10 @@ class _TrainingProgressDetailPageState
     );
     final signatureService = AuthorizedSignatureService();
     final trainers = await signatureService.loadTrainers();
+    final responsibles = await signatureService.loadResponsibles();
     final trainerId = await signatureService.trainerIdFor(widget.training.key);
+    final responsibleId =
+        await signatureService.responsibleIdFor(widget.training.key);
     final documentService = DocumentControlService();
     final control = await documentService.load(
       widget.training.key,
@@ -57,6 +62,8 @@ class _TrainingProgressDetailPageState
       _participants = rows;
       _trainers = trainers;
       _trainerId = trainerId;
+      _responsibles = responsibles;
+      _responsibleId = responsibleId;
       _control = control;
       _history = history;
       _companies = companies;
@@ -168,6 +175,19 @@ class _TrainingProgressDetailPageState
     setState(() => _trainerId = trainerId);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Capacitador asignado al registro.')),
+    );
+  }
+
+  Future<void> _assignResponsible(String? responsibleId) async {
+    if (responsibleId == null) return;
+    await AuthorizedSignatureService().assignResponsible(
+      widget.training.key,
+      responsibleId,
+    );
+    if (!mounted) return;
+    setState(() => _responsibleId = responsibleId);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Responsable de cierre asignado.')),
     );
   }
 
@@ -327,10 +347,24 @@ class _TrainingProgressDetailPageState
                       .toList(),
                   onChanged: _control?.isClosed == true ? null : _assignTrainer,
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Responsable: CUTIPA QUISPE JHONATHAN - ASISTENTE SSOMA',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF626B7A)),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _responsibleId,
+                  decoration: const InputDecoration(
+                    labelText: 'Responsable que cierra el registro',
+                    prefixIcon: Icon(Icons.verified_user_outlined),
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _responsibles
+                      .map(
+                        (signer) => DropdownMenuItem(
+                          value: signer.id,
+                          child: Text('${signer.fullName} · ${signer.position}'),
+                        ),
+                      )
+                      .toList(),
+                  onChanged:
+                      _control?.isClosed == true ? null : _assignResponsible,
                 ),
                 const SizedBox(height: 12),
                 FilledButton.icon(

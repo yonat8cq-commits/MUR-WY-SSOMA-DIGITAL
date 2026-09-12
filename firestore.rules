@@ -3,19 +3,30 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function isAdmin() { return signedIn() && request.auth.token.role == 'SUPER_ADMIN'; }
-    function ownsDni(dni) { return signedIn() && request.auth.token.dni == dni; }
+    function ownsDni(dni) {
+      return signedIn() && (
+        request.auth.token.dni == dni ||
+        request.auth.token.email == dni + '@auth.murwy.local'
+      );
+    }
 
     match /users/{uid} {
       allow read: if isAdmin() || ownsDni(uid);
-      allow write: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        ownsDni(uid) &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['requires_password_change', 'account_status', 'updated_at']) &&
+        request.resource.data.requires_password_change == false &&
+        request.resource.data.account_status == 'ACTIVO'
+      );
     }
     match /companies/{id} {
       allow read: if signedIn();
       allow write: if isAdmin();
     }
     match /trainings/{id} {
-      allow read: if isAdmin() || (signedIn() &&
-        exists(/databases/$(database)/documents/training_participants/$(id + '_' + request.auth.token.dni)));
+      allow read: if signedIn();
       allow write: if isAdmin();
     }
     match /training_participants/{id} {
@@ -27,7 +38,7 @@ service cloud.firestore {
       allow create: if ownsDni(request.resource.data.dni)
         && request.resource.data.keys().hasAll(['dni', 'training_id', 'confirmed_at', 'signature_blob'])
         && request.resource.data.signature_blob.size() <= 200000
-        && exists(/databases/$(database)/documents/training_participants/$(request.resource.data.training_id + '_' + request.auth.token.dni));
+        && exists(/databases/$(database)/documents/training_participants/$(request.resource.data.training_id + '_' + request.resource.data.dni));
       allow update, delete: if false;
     }
     match /consents/{id} {
