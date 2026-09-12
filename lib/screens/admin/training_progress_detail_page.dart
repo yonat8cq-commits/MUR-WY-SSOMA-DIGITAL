@@ -242,7 +242,11 @@ class _TrainingProgressDetailPageState
                     style: const TextStyle(
                         fontSize: 20, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 6),
-                Text(widget.training.date,
+                Text(
+                    widget.training.date +
+                        (widget.training.hours.isEmpty
+                            ? ''
+                            : ' • ${widget.training.hours} horas'),
                     style: const TextStyle(color: Color(0xFF626B7A))),
                 const SizedBox(height: 10),
                 Chip(

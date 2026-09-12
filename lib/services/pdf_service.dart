@@ -9,6 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../database/app_database.dart';
 import 'authorized_signature_service.dart';
 import 'company_service.dart';
+import 'signature_image_service.dart';
 
 class FsgiParticipant {
   final String dni;
@@ -31,6 +32,7 @@ class FsgiParticipant {
 class FsgiRecord {
   final String course;
   final String date;
+  final String hours;
   final List<FsgiParticipant> participants;
   final AuthorizedSigner? trainer;
   final AuthorizedSigner? responsible;
@@ -39,6 +41,7 @@ class FsgiRecord {
   const FsgiRecord({
     required this.course,
     required this.date,
+    required this.hours,
     required this.participants,
     required this.trainer,
     required this.responsible,
@@ -54,7 +57,7 @@ class PdfService {
     final db = await AppDatabase.instance.database;
     final trainingRows = await db.query(
       'capacitaciones_importadas',
-      columns: ['course', 'training_date'],
+      columns: ['course', 'training_date', 'hours'],
       where: 'training_key = ?',
       whereArgs: [trainingKey],
       limit: 1,
@@ -84,6 +87,7 @@ class PdfService {
     return FsgiRecord(
       course: trainingRows.first['course'] as String? ?? '',
       date: trainingRows.first['training_date'] as String? ?? '',
+      hours: trainingRows.first['hours'] as String? ?? '',
       participants: rows
           .map(
             (row) => FsgiParticipant(
@@ -92,7 +96,11 @@ class PdfService {
               company: row['company'] as String? ?? '',
               area: row['area'] as String? ?? '',
               position: row['position'] as String? ?? '',
-              signaturePng: row['signature_png'] as Uint8List?,
+              signaturePng: row['signature_png'] == null
+                  ? null
+                  : SignatureImageService.normalize(
+                      row['signature_png'] as Uint8List,
+                    ),
             ),
           )
           .toList(),
@@ -138,6 +146,7 @@ class PdfService {
             record,
             pageParticipants,
             start,
+            pageIndex,
             template,
           ),
         ),
@@ -185,64 +194,90 @@ class PdfService {
     FsgiRecord record,
     List<FsgiParticipant> participants,
     int start,
+    int pageIndex,
     pw.MemoryImage template,
   ) {
+    const rowTop = 102.62;
+    const rowHeight = 7.09;
     final widgets = <pw.Widget>[
       pw.Positioned.fill(
         child: pw.Image(template, fit: pw.BoxFit.fill),
       ),
-      _text(record.course, 68, 60.5, width: 65, size: 7.5, bold: true),
-      _text(record.trainer?.fullName ?? 'NO ASIGNADO', 68, 68.7,
-          width: 62, size: 6.5),
-      _text(record.trainer?.position ?? '', 68, 76.2,
-          width: 62, size: 6.5),
-      _text(record.company.businessName, 68, 83.6, width: 62, size: 6.5),
-      _text(record.date, 153, 76.2, width: 39, size: 6.5),
-      _text('X', 37.7, 69.9, width: 4, size: 8, bold: true),
+      _cellText(record.course, 68, 56.7, 65, 7.1, size: 6.3, bold: true),
+      _cellText(record.trainer?.fullName ?? 'NO ASIGNADO', 68, 63.3, 62, 7,
+          size: 6.0),
+      _cellText(record.trainer?.position ?? '', 68, 70.7, 62, 7,
+          size: 6.0),
+      _cellText(record.company.businessName, 68, 77.8, 62, 7,
+          size: 6.0),
+      _cellText(record.date, 153, 70.7, 39, 7,
+          size: 6.0, align: pw.TextAlign.center),
+      _cellText(record.hours, 163, 77.8, 29, 7,
+          size: 6.2, align: pw.TextAlign.center),
+      _cellText(record.participants.length.toString(), 171, 51.7, 29.8, 5.8,
+          size: 7.0, bold: true, align: pw.TextAlign.center),
+      _cellText('X', 36.4, 65.85, 5.2, 5.2,
+          size: 8.0, bold: true, align: pw.TextAlign.center),
     ];
 
     final trainerSignature = record.trainer?.signaturePng;
     if (trainerSignature != null) {
-      widgets.add(_image(trainerSignature, 149, 64.2, 43, 10));
+      widgets.add(_image(trainerSignature, 149, 60.2, 43, 9));
     }
 
     for (var index = 0; index < participants.length; index++) {
       final person = participants[index];
-      final y = 102.6 + index * 7.12;
+      final y = rowTop + index * rowHeight;
+      if (pageIndex > 0) {
+        widgets.add(_whiteBox(9.55, y + .2, 4.62, rowHeight - .4));
+        widgets.add(_cellText(
+          (start + index + 1).toString().padLeft(2, '0'),
+          9.36,
+          y,
+          5.0,
+          rowHeight,
+          size: 7.2,
+          bold: true,
+          align: pw.TextAlign.center,
+        ));
+      }
       widgets.addAll([
-        _text((start + index + 1).toString().padLeft(2, '0'), 8.5, y,
-            width: 6.6, size: 5.1, align: pw.TextAlign.center),
-        _text(person.dni, 15.2, y, width: 20, size: 5.1,
-            align: pw.TextAlign.center),
-        _text(person.fullName, 35.8, y, width: 49, size: 5.1),
-        _text(person.company, 85.2, y, width: 17.5, size: 5.1),
-        _text(person.area, 103, y, width: 27.2, size: 5.1),
-        _text(person.position, 130.5, y, width: 42, size: 5.1),
+        _cellText(person.dni, 14.4, y, 20.65, rowHeight,
+            size: 7.0, align: pw.TextAlign.center),
+        _cellText(person.fullName, 35.05, y, 49.9, rowHeight, size: 6.4),
+        _cellText(person.company, 84.95, y, 17.53, rowHeight,
+            size: 5.8, align: pw.TextAlign.center),
+        _cellText(person.area, 102.48, y, 27.47, rowHeight,
+            size: 6.0, align: pw.TextAlign.center),
+        _cellText(person.position, 129.95, y, 42.51, rowHeight,
+            size: 6.0, align: pw.TextAlign.center),
       ]);
       if (person.signaturePng != null) {
-        widgets.add(_image(person.signaturePng!, 174.5, y - 4.9, 24, 5.8));
+        widgets.add(_image(person.signaturePng!, 173.2, y + .3, 26, 6.45));
       }
     }
 
     final responsible = record.responsible;
     widgets.addAll([
-      _text(responsible?.fullName ?? 'CUTIPA QUISPE JHONATHAN', 31.5, 283.7,
-          width: 96, size: 5.8),
-      _text(responsible?.position ?? 'ASISTENTE SSOMA', 31.5, 290.7,
-          width: 96, size: 5.8),
-      _text(record.date, 151, 290.7, width: 40, size: 5.8),
+      _cellText(responsible?.fullName ?? 'CUTIPA QUISPE JHONATHAN', 31.5,
+          282.2, 90, 6.0, size: 6.2),
+      _cellText(responsible?.position ?? 'ASISTENTE SSOMA', 31.5, 289.8, 90,
+          6.0, size: 6.2),
+      _cellText(record.date, 151, 289.8, 40, 6.0,
+          size: 6.2, align: pw.TextAlign.center),
     ]);
     if (responsible?.signaturePng != null) {
-      widgets.add(_image(responsible!.signaturePng!, 151, 280.7, 39, 9));
+      widgets.add(_image(responsible!.signaturePng!, 143, 280.1, 38, 6.7));
     }
     return pw.Stack(children: widgets);
   }
 
-  pw.Widget _text(
+  pw.Widget _cellText(
     String value,
     double x,
-    double y, {
-    required double width,
+    double y,
+    double width,
+    double height, {
     required double size,
     bool bold = false,
     pw.TextAlign align = pw.TextAlign.left,
@@ -250,8 +285,13 @@ class PdfService {
       pw.Positioned(
         left: x * PdfPageFormat.mm,
         top: y * PdfPageFormat.mm,
-        child: pw.SizedBox(
+        child: pw.Container(
           width: width * PdfPageFormat.mm,
+          height: height * PdfPageFormat.mm,
+          padding: const pw.EdgeInsets.symmetric(horizontal: 1.2),
+          alignment: align == pw.TextAlign.center
+              ? pw.Alignment.center
+              : pw.Alignment.centerLeft,
           child: pw.Text(
             value,
             maxLines: 2,
@@ -261,6 +301,22 @@ class PdfService {
               fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
             ),
           ),
+        ),
+      );
+
+  pw.Widget _whiteBox(
+    double x,
+    double y,
+    double width,
+    double height,
+  ) =>
+      pw.Positioned(
+        left: x * PdfPageFormat.mm,
+        top: y * PdfPageFormat.mm,
+        child: pw.Container(
+          width: width * PdfPageFormat.mm,
+          height: height * PdfPageFormat.mm,
+          color: PdfColors.white,
         ),
       );
 

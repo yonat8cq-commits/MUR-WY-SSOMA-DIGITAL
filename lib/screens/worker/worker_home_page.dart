@@ -61,7 +61,7 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
             key: training.key,
             title: training.course,
             date: training.date,
-            hours: 'Según registro TECSUP',
+            hours: training.hours.isEmpty ? 'No registrada' : '${training.hours} horas',
             provider: 'TECSUP',
             deadline: _date(training.deadline),
           ),

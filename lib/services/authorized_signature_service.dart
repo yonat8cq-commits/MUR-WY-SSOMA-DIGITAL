@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../database/app_database.dart';
 import 'sync_outbox_service.dart';
+import 'signature_image_service.dart';
 
 class AuthorizedSigner {
   final String id;
@@ -77,10 +78,11 @@ class AuthorizedSignatureService {
 
   Future<void> saveSignature(String id, Uint8List signaturePng) async {
     final db = await AppDatabase.instance.database;
+    final normalizedSignature = SignatureImageService.normalize(signaturePng);
     await db.update(
       'firmas_autorizadas',
       {
-        'signature_png': signaturePng,
+        'signature_png': normalizedSignature,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       },
       where: 'signer_id = ?',
@@ -149,7 +151,9 @@ class AuthorizedSignatureService {
     if (path == null) return null;
     try {
       final data = await rootBundle.load(path);
-      return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      return SignatureImageService.normalize(
+        data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+      );
     } catch (_) {
       return null;
     }

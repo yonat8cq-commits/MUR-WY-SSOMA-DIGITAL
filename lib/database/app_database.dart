@@ -20,7 +20,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 11,
+      version: 12,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE trabajadores (
@@ -91,6 +91,9 @@ class AppDatabase {
         if (oldVersion < 11) {
           await _createAuthorizedSignatureTables(db);
         }
+        if (oldVersion < 12) {
+          await _addTrainingHours(db);
+        }
       },
     );
   }
@@ -157,6 +160,17 @@ class AppDatabase {
       {'requires_password_change': 1},
       where: 'password_hash IS NULL OR password_salt IS NULL',
     );
+  }
+
+  Future<void> _addTrainingHours(Database db) async {
+    final columns = await db.rawQuery(
+      'PRAGMA table_info(capacitaciones_importadas)',
+    );
+    if (!columns.any((column) => column['name'] == 'hours')) {
+      await db.execute(
+        "ALTER TABLE capacitaciones_importadas ADD COLUMN hours TEXT NOT NULL DEFAULT ''",
+      );
+    }
   }
 
   Future<void> _createHistoricalDocumentTables(Database db) async {
@@ -238,6 +252,7 @@ class AppDatabase {
         training_key TEXT PRIMARY KEY,
         course TEXT NOT NULL,
         training_date TEXT NOT NULL,
+        hours TEXT NOT NULL DEFAULT '',
         approved_participants INTEGER NOT NULL,
         status TEXT NOT NULL DEFAULT 'BORRADOR',
         updated_at TEXT NOT NULL

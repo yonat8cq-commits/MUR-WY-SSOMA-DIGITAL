@@ -1,7 +1,7 @@
 name: mur_wy_ssoma_digital
 description: Aplicacion digital SSOMA MUR WY
 publish_to: 'none'
-version: 1.0.1+2
+version: 1.0.2+3
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -26,6 +26,7 @@ dependencies:
   firebase_messaging: ^15.1.0
   flutter_secure_storage: ^9.2.2
   file_saver: ^0.2.14
+  image: ^4.2.0
 
 
 dev_dependencies:

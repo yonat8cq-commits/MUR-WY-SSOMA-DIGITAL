@@ -27,6 +27,7 @@ class AssignedTraining {
   final String key;
   final String course;
   final String date;
+  final String hours;
   final bool signed;
   final String status;
   final DateTime deadline;
@@ -35,6 +36,7 @@ class AssignedTraining {
     required this.key,
     required this.course,
     required this.date,
+    required this.hours,
     required this.signed,
     required this.status,
     required this.deadline,
@@ -85,6 +87,7 @@ class WorkerDataService {
         c.training_key,
         c.course,
         c.training_date,
+        c.hours,
         CASE WHEN f.record_key IS NULL THEN 0 ELSE 1 END AS signed
       FROM participantes_capacitacion p
       INNER JOIN capacitaciones_importadas c
@@ -108,6 +111,7 @@ class WorkerDataService {
           key: key,
           course: row['course'] as String? ?? '',
           date: date,
+          hours: row['hours'] as String? ?? '',
           signed: signed,
           status: control.isClosed
               ? 'CERRADO'

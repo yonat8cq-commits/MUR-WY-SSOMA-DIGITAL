@@ -31,12 +31,14 @@ class TecsupImportResult {
             course:
                 'HIGIENE OCUPACIONAL (AGENTES FÍSICOS, QUÍMICOS, BIOLÓGICOS)',
             date: '01/02/2026',
+            hours: '2',
             approvedParticipants: 5,
           ),
           ImportedTraining(
             key: 'RESUMEN',
             course: 'Capacitaciones independientes detectadas',
             date: 'Archivo completo',
+            hours: '',
             approvedParticipants: 230,
           ),
         ],
@@ -70,12 +72,14 @@ class ImportedTraining {
   final String key;
   final String course;
   final String date;
+  final String hours;
   final int approvedParticipants;
 
   const ImportedTraining({
     required this.key,
     required this.course,
     required this.date,
+    required this.hours,
     required this.approvedParticipants,
   });
 }
@@ -89,6 +93,7 @@ class ExcelService {
     'ESTADO',
     'ID PROGRAMACION',
     'GRUPO',
+    'HHT',
   };
 
   TecsupImportResult importTecsup(Uint8List bytes) {
@@ -134,12 +139,18 @@ class ExcelService {
       workers.add(normalizedDni);
 
       final date = _read(row, headers, 'FECHA DE CURSO');
+      final hours = _read(row, headers, 'HHT').replaceAll(RegExp(r'\.0$'), '');
       final programId = _read(row, headers, 'ID PROGRAMACION');
       final group = _read(row, headers, 'GRUPO');
       final key = [programId, group, course, date].join('|');
       grouped.putIfAbsent(
         key,
-        () => _TrainingAccumulator(key: key, course: course, date: date),
+        () => _TrainingAccumulator(
+          key: key,
+          course: course,
+          date: date,
+          hours: hours,
+        ),
       );
       grouped[key]!.participants.add(normalizedDni);
       participants.add(
@@ -165,6 +176,7 @@ class ExcelService {
             key: item.key,
             course: item.course,
             date: item.date,
+            hours: item.hours,
             approvedParticipants: item.participants.length,
           ),
         )
@@ -210,11 +222,13 @@ class _TrainingAccumulator {
   final String key;
   final String course;
   final String date;
+  final String hours;
   final Set<String> participants = {};
 
   _TrainingAccumulator({
     required this.key,
     required this.course,
     required this.date,
+    required this.hours,
   });
 }

@@ -5,6 +5,7 @@ class TrainingProgress {
   final String key;
   final String course;
   final String date;
+  final String hours;
   final int total;
   final int signed;
   final String status;
@@ -15,6 +16,7 @@ class TrainingProgress {
     required this.key,
     required this.course,
     required this.date,
+    required this.hours,
     required this.total,
     required this.signed,
     required this.status,
@@ -52,6 +54,7 @@ class AdminTrackingService {
         c.training_key,
         c.course,
         c.training_date,
+        c.hours,
         COUNT(p.dni) AS total,
         SUM(CASE WHEN f.record_key IS NULL THEN 0 ELSE 1 END) AS signed
       FROM capacitaciones_importadas c
@@ -60,7 +63,7 @@ class AdminTrackingService {
       LEFT JOIN confirmaciones_capacitacion f
         ON f.training_key = p.training_key AND f.dni = p.dni
       WHERE c.status != 'ARCHIVADO'
-      GROUP BY c.training_key, c.course, c.training_date
+      GROUP BY c.training_key, c.course, c.training_date, c.hours
       ORDER BY c.training_date DESC, c.course ASC
     ''');
     final result = <TrainingProgress>[];
@@ -76,6 +79,7 @@ class AdminTrackingService {
           key: key,
           course: row['course'] as String? ?? '',
           date: date,
+          hours: row['hours'] as String? ?? '',
           total: total,
           signed: signed,
           status: control.statusFor(total: total, signed: signed),

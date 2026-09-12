@@ -4,6 +4,7 @@ import '../database/app_database.dart';
 import 'document_control_service.dart';
 import 'sync_outbox_service.dart';
 import 'firebase_auth_service.dart';
+import 'signature_image_service.dart';
 
 class OfflineWorkflowService {
   static final OfflineWorkflowService instance = OfflineWorkflowService._();
@@ -123,6 +124,7 @@ class OfflineWorkflowService {
     }
     final confirmedAt = DateTime.now().toUtc().toIso8601String();
     final recordKey = '${dni}_$trainingKey';
+    final normalizedSignature = SignatureImageService.normalize(signaturePng);
     await db.transaction((transaction) async {
       await transaction.insert(
         'confirmaciones_capacitacion',
@@ -131,7 +133,7 @@ class OfflineWorkflowService {
           'dni': dni,
           'training_key': trainingKey,
           'confirmed_at': confirmedAt,
-          'signature_png': signaturePng,
+          'signature_png': normalizedSignature,
           'sync_status': 0,
         },
         conflictAlgorithm: ConflictAlgorithm.replace,

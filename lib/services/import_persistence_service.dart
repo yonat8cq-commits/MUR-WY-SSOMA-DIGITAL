@@ -23,14 +23,20 @@ class ImportPersistenceService {
   ) async {
     final db = await AppDatabase.instance.database;
     final now = DateTime.now().toUtc().toIso8601String();
+    final campaignId = 'import_${DateTime.now().toUtc().microsecondsSinceEpoch}';
+    final effectiveKeys = {
+      for (final training in result.trainings)
+        training.key: '$campaignId|${training.key}',
+    };
     final workerIds = <String>{};
     final assignmentIds = <String>{};
     final participantsByTraining = <String, Set<String>>{};
     for (final participant in result.participants) {
+      final effectiveKey = effectiveKeys[participant.trainingKey]!;
       participantsByTraining
-          .putIfAbsent(participant.trainingKey, () => <String>{})
+          .putIfAbsent(effectiveKey, () => <String>{})
           .add(participant.dni);
-      assignmentIds.add('${participant.trainingKey}_${participant.dni}');
+      assignmentIds.add('${effectiveKey}_${participant.dni}');
     }
 
     await db.transaction((transaction) async {
@@ -66,12 +72,14 @@ class ImportPersistenceService {
       });
 
       for (final training in result.trainings) {
+        final effectiveKey = effectiveKeys[training.key]!;
         await transaction.insert(
           'capacitaciones_importadas',
           {
-            'training_key': training.key,
+            'training_key': effectiveKey,
             'course': training.course,
             'training_date': training.date,
+            'hours': training.hours,
             'approved_participants': training.approvedParticipants,
             'status': 'BORRADOR',
             'updated_at': now,
@@ -83,30 +91,32 @@ class ImportPersistenceService {
           {
             'course': training.course,
             'training_date': training.date,
+            'hours': training.hours,
             'approved_participants': training.approvedParticipants,
             'status': 'BORRADOR',
             'updated_at': now,
           },
           where: 'training_key = ?',
-          whereArgs: [training.key],
+          whereArgs: [effectiveKey],
         );
-        final currentDnis = participantsByTraining[training.key] ?? <String>{};
+        final currentDnis = participantsByTraining[effectiveKey] ?? <String>{};
         if (currentDnis.isNotEmpty) {
           await transaction.delete(
             'participantes_capacitacion',
             where:
                 'training_key = ? AND dni NOT IN (${List.filled(currentDnis.length, '?').join(',')})',
-            whereArgs: [training.key, ...currentDnis],
+            whereArgs: [effectiveKey, ...currentDnis],
           );
         }
         await SyncOutboxService().enqueueWith(
           transaction,
           entityType: 'TRAINING',
-          entityId: training.key,
+          entityId: effectiveKey,
           operation: 'UPSERT',
           payload: {
             'course': training.course,
             'training_date': training.date,
+            'hours': training.hours,
             'approved_participants': training.approvedParticipants,
             'status': 'BORRADOR',
           },
@@ -114,6 +124,7 @@ class ImportPersistenceService {
       }
 
       for (final participant in result.participants) {
+        final effectiveKey = effectiveKeys[participant.trainingKey]!;
         workerIds.add(participant.dni);
         await transaction.insert(
           'trabajadores_importados',
@@ -157,7 +168,7 @@ class ImportPersistenceService {
         await transaction.insert(
           'participantes_capacitacion',
           {
-            'training_key': participant.trainingKey,
+            'training_key': effectiveKey,
             'dni': participant.dni,
             'signature_status': 'PENDIENTE',
             'assigned_at': now,
@@ -167,10 +178,10 @@ class ImportPersistenceService {
         await SyncOutboxService().enqueueWith(
           transaction,
           entityType: 'TRAINING_PARTICIPANT',
-          entityId: '${participant.trainingKey}_${participant.dni}',
+          entityId: '${effectiveKey}_${participant.dni}',
           operation: 'UPSERT',
           payload: {
-            'training_id': participant.trainingKey,
+            'training_id': effectiveKey,
             'dni': participant.dni,
             'signature_status': 'PENDIENTE',
           },
