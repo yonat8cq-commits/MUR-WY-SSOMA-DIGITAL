@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'dart:io';
 
 import 'package:file_saver/file_saver.dart';
@@ -251,14 +250,16 @@ class PdfService {
       pw.Positioned(
         left: x * PdfPageFormat.mm,
         top: y * PdfPageFormat.mm,
-        width: width * PdfPageFormat.mm,
-        child: pw.Text(
-          value,
-          maxLines: 2,
-          textAlign: align,
-          style: pw.TextStyle(
-            fontSize: size,
-            fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+        child: pw.SizedBox(
+          width: width * PdfPageFormat.mm,
+          child: pw.Text(
+            value,
+            maxLines: 2,
+            textAlign: align,
+            style: pw.TextStyle(
+              fontSize: size,
+              fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+            ),
           ),
         ),
       );
@@ -273,8 +274,10 @@ class PdfService {
       pw.Positioned(
         left: x * PdfPageFormat.mm,
         top: y * PdfPageFormat.mm,
-        width: width * PdfPageFormat.mm,
-        height: height * PdfPageFormat.mm,
-        child: pw.Image(pw.MemoryImage(bytes), fit: pw.BoxFit.contain),
+        child: pw.SizedBox(
+          width: width * PdfPageFormat.mm,
+          height: height * PdfPageFormat.mm,
+          child: pw.Image(pw.MemoryImage(bytes), fit: pw.BoxFit.contain),
+        ),
       );
 }
