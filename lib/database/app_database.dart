@@ -20,7 +20,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 10,
+      version: 11,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE trabajadores (
@@ -87,6 +87,9 @@ class AppDatabase {
         }
         if (oldVersion < 10) {
           await _createSyncTables(db);
+        }
+        if (oldVersion < 11) {
+          await _createAuthorizedSignatureTables(db);
         }
       },
     );
@@ -276,13 +279,13 @@ class AppDatabase {
     final defaults = [
       {
         'signer_id': 'roly',
-        'full_name': 'ROLY QUISPE TURPO',
+        'full_name': 'QUISPE TURPO ROLY',
         'position': 'SUPERVISOR SSOMA',
         'signer_role': 'CAPACITADOR',
       },
       {
         'signer_id': 'karina',
-        'full_name': 'KARINA HERMOSA CASTILLO CORDOVA',
+        'full_name': 'CASTILLO CORDOVA KARINA HERMOSA',
         'position': 'SUPERVISOR SSOMA',
         'signer_role': 'CAPACITADOR',
       },
@@ -298,6 +301,18 @@ class AppDatabase {
         'firmas_autorizadas',
         {...signer, 'updated_at': now},
         conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+      await db.update(
+        'firmas_autorizadas',
+        {
+          'full_name': signer['full_name'],
+          'position': signer['position'],
+          'signer_role': signer['signer_role'],
+          'active': 1,
+          'updated_at': now,
+        },
+        where: 'signer_id = ?',
+        whereArgs: [signer['signer_id']],
       );
     }
   }

@@ -119,7 +119,7 @@ class OfflineWorkflowService {
       throw StateError('El registro ya fue cerrado por SSOMA.');
     }
     if (control.isExpired) {
-      throw StateError('El plazo de 40 días para firmar ya venció.');
+      throw StateError('El plazo de 160 días para firmar ya venció.');
     }
     final confirmedAt = DateTime.now().toUtc().toIso8601String();
     final recordKey = '${dni}_$trainingKey';

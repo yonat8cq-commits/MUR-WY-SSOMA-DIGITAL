@@ -72,6 +72,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   }
 
   Future<void> _selectAndProcessExcel() async {
+    setState(() {
+      _result = null;
+      _selectedFileName = null;
+      _saveSummary = null;
+    });
     const typeGroup = XTypeGroup(
       label: 'Archivos Excel',
       extensions: ['xlsx'],
@@ -94,7 +99,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         _loading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Excel procesado correctamente.')),
+        const SnackBar(
+          content: Text(
+            'Excel nuevo procesado. Al guardar reemplazará la campaña visible y actualizará las estadísticas.',
+          ),
+        ),
       );
     } on FormatException catch (error) {
       if (!mounted) return;

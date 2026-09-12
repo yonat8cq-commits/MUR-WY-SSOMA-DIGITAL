@@ -61,7 +61,7 @@ class _RemindersPageState extends State<RemindersPage> {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Prioriza las firmas pendientes según el plazo de 40 días.',
+                    'Prioriza las firmas pendientes según el plazo de 160 días.',
                     style: TextStyle(color: Color(0xFF626B7A)),
                   ),
                   const SizedBox(height: 16),

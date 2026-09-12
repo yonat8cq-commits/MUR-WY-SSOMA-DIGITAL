@@ -43,9 +43,6 @@ jobs:
       - name: Deploy Firestore rules and indexes
         run: firebase deploy --project mur-wy-ssoma-digital --only firestore:rules,firestore:indexes
 
-      - name: Deploy Storage rules
-        run: firebase deploy --project mur-wy-ssoma-digital --only storage
-
       - name: Remove temporary credential
         if: always()
         run: |

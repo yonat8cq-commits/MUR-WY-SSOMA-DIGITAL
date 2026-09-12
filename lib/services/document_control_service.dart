@@ -75,6 +75,29 @@ class DocumentControlService {
         whereArgs: [trainingKey],
         limit: 1,
       );
+    } else {
+      final configuredDeadline = _deadlineFor(trainingDate);
+      final storedDeadline = DateTime.tryParse(
+        rows.first['deadline'] as String? ?? '',
+      );
+      if (storedDeadline == null ||
+          !storedDeadline.isAtSameMomentAs(configuredDeadline)) {
+        await db.update(
+          'control_documental',
+          {
+            'deadline': configuredDeadline.toIso8601String(),
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          },
+          where: 'training_key = ?',
+          whereArgs: [trainingKey],
+        );
+        rows = await db.query(
+          'control_documental',
+          where: 'training_key = ?',
+          whereArgs: [trainingKey],
+          limit: 1,
+        );
+      }
     }
     final row = rows.first;
     return DocumentControl(
@@ -196,16 +219,16 @@ class DocumentControlService {
   DateTime _deadlineFor(String value) {
     final normalized = value.trim();
     final direct = DateTime.tryParse(normalized);
-    if (direct != null) return direct.add(const Duration(days: 40));
+    if (direct != null) return direct.add(const Duration(days: 160));
     final parts = normalized.split(RegExp(r'[/.-]'));
     if (parts.length >= 3) {
       final day = int.tryParse(parts[0]);
       final month = int.tryParse(parts[1]);
       final year = int.tryParse(parts[2]);
       if (day != null && month != null && year != null) {
-        return DateTime(year, month, day).add(const Duration(days: 40));
+        return DateTime(year, month, day).add(const Duration(days: 160));
       }
     }
-    return DateTime.now().add(const Duration(days: 40));
+    return DateTime.now().add(const Duration(days: 160));
   }
 }

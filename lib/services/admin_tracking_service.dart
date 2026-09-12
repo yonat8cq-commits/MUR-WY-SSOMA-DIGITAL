@@ -59,6 +59,7 @@ class AdminTrackingService {
         ON p.training_key = c.training_key
       LEFT JOIN confirmaciones_capacitacion f
         ON f.training_key = p.training_key AND f.dni = p.dni
+      WHERE c.status != 'ARCHIVADO'
       GROUP BY c.training_key, c.course, c.training_date
       ORDER BY c.training_date DESC, c.course ASC
     ''');

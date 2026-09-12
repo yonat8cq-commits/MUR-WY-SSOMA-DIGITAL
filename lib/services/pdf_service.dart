@@ -1,6 +1,9 @@
 import 'dart:typed_data';
+import 'dart:io';
 
+import 'package:file_saver/file_saver.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -45,9 +48,10 @@ class FsgiRecord {
 }
 
 class PdfService {
-  static const _border = PdfColor.fromInt(0xFF222222);
-
-  Future<FsgiRecord> loadRecord(String trainingKey) async {
+  Future<FsgiRecord> loadRecord(
+    String trainingKey, {
+    bool signedOnly = false,
+  }) async {
     final db = await AppDatabase.instance.database;
     final trainingRows = await db.query(
       'capacitaciones_importadas',
@@ -68,6 +72,7 @@ class PdfService {
       LEFT JOIN confirmaciones_capacitacion f
         ON f.training_key = p.training_key AND f.dni = p.dni
       WHERE p.training_key = ?
+        ${signedOnly ? 'AND f.record_key IS NOT NULL' : ''}
       ORDER BY w.full_name ASC
       ''',
       [trainingKey],
@@ -98,9 +103,24 @@ class PdfService {
     );
   }
 
-  Future<Uint8List> generateFsgi(String trainingKey) async {
-    final record = await loadRecord(trainingKey);
+  Future<Uint8List> generateFsgi(
+    String trainingKey, {
+    bool signedOnly = false,
+  }) async {
+    final record = await loadRecord(trainingKey, signedOnly: signedOnly);
+    if (signedOnly && record.participants.isEmpty) {
+      throw StateError('Todavía no existe ninguna firma para descargar.');
+    }
     final document = pw.Document();
+    final templateData = await rootBundle.load(
+      'assets/templates/fsgi_04_01.png',
+    );
+    final template = pw.MemoryImage(
+      templateData.buffer.asUint8List(
+        templateData.offsetInBytes,
+        templateData.lengthInBytes,
+      ),
+    );
     final totalPages = record.participants.isEmpty
         ? 1
         : (record.participants.length / 25).ceil();
@@ -114,13 +134,12 @@ class PdfService {
       document.addPage(
         pw.Page(
           pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.fromLTRB(24, 24, 24, 18),
+          margin: pw.EdgeInsets.zero,
           build: (_) => _buildPage(
             record,
             pageParticipants,
             start,
-            pageIndex + 1,
-            totalPages,
+            template,
           ),
         ),
       );
@@ -128,15 +147,27 @@ class PdfService {
     return document.save();
   }
 
-  Future<String?> saveFsgi(String trainingKey) async {
-    final record = await loadRecord(trainingKey);
-    final bytes = await generateFsgi(trainingKey);
+  Future<String?> saveFsgi(
+    String trainingKey, {
+    bool signedOnly = false,
+  }) async {
+    final record = await loadRecord(trainingKey, signedOnly: signedOnly);
+    final bytes = await generateFsgi(trainingKey, signedOnly: signedOnly);
     final safeCourse = record.course
         .replaceAll(RegExp(r'[^A-Za-z0-9ÁÉÍÓÚÑáéíóúñ]+'), '_')
         .replaceAll(RegExp(r'^_+|_+$'), '');
+    final baseName =
+        'F-SGI-04-01_${safeCourse.isEmpty ? 'capacitacion' : safeCourse}${signedOnly ? '_firmas_disponibles' : ''}';
+    if (Platform.isAndroid) {
+      return FileSaver.instance.saveAs(
+        name: baseName,
+        bytes: bytes,
+        ext: 'pdf',
+        mimeType: MimeType.pdf,
+      );
+    }
     final location = await getSaveLocation(
-      suggestedName:
-          'F-SGI-04-01_${safeCourse.isEmpty ? 'capacitacion' : safeCourse}.pdf',
+      suggestedName: '$baseName.pdf',
       acceptedTypeGroups: const [
         XTypeGroup(label: 'Documento PDF', extensions: ['pdf']),
       ],
@@ -155,312 +186,95 @@ class PdfService {
     FsgiRecord record,
     List<FsgiParticipant> participants,
     int start,
-    int page,
-    int totalPages,
+    pw.MemoryImage template,
   ) {
-    final rows = List<FsgiParticipant?>.filled(25, null);
+    final widgets = <pw.Widget>[
+      pw.Positioned.fill(
+        child: pw.Image(template, fit: pw.BoxFit.fill),
+      ),
+      _text(record.course, 68, 60.5, width: 65, size: 7.5, bold: true),
+      _text(record.trainer?.fullName ?? 'NO ASIGNADO', 68, 68.7,
+          width: 62, size: 6.5),
+      _text(record.trainer?.position ?? '', 68, 76.2,
+          width: 62, size: 6.5),
+      _text(record.company.businessName, 68, 83.6, width: 62, size: 6.5),
+      _text(record.date, 153, 76.2, width: 39, size: 6.5),
+      _text('X', 37.7, 69.9, width: 4, size: 8, bold: true),
+    ];
+
+    final trainerSignature = record.trainer?.signaturePng;
+    if (trainerSignature != null) {
+      widgets.add(_image(trainerSignature, 149, 64.2, 43, 10));
+    }
+
     for (var index = 0; index < participants.length; index++) {
-      rows[index] = participants[index];
+      final person = participants[index];
+      final y = 102.6 + index * 7.12;
+      widgets.addAll([
+        _text((start + index + 1).toString().padLeft(2, '0'), 8.5, y,
+            width: 6.6, size: 5.1, align: pw.TextAlign.center),
+        _text(person.dni, 15.2, y, width: 20, size: 5.1,
+            align: pw.TextAlign.center),
+        _text(person.fullName, 35.8, y, width: 49, size: 5.1),
+        _text(person.company, 85.2, y, width: 17.5, size: 5.1),
+        _text(person.area, 103, y, width: 27.2, size: 5.1),
+        _text(person.position, 130.5, y, width: 42, size: 5.1),
+      ]);
+      if (person.signaturePng != null) {
+        widgets.add(_image(person.signaturePng!, 174.5, y - 4.9, 24, 5.8));
+      }
     }
-    return pw.Column(
-      children: [
-        _box(
-          pw.Row(
-            children: [
-              pw.Expanded(
-                child: pw.Text(
-                  'N° REGISTRO:',
-                  style: pw.TextStyle(
-                    fontSize: 7,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-              ),
-              pw.Text(
-                'Página $page de $totalPages',
-                style: const pw.TextStyle(fontSize: 6),
-              ),
-            ],
-          ),
-          height: 20,
-        ),
-        _box(
-          pw.Row(
-            children: [
-              if (record.company.logoPng != null) ...[
-                pw.SizedBox(
-                  width: 50,
-                  height: 15,
-                  child: pw.Image(
-                    pw.MemoryImage(record.company.logoPng!),
-                    fit: pw.BoxFit.contain,
-                  ),
-                ),
-                pw.SizedBox(width: 5),
-              ],
-              pw.Expanded(
-                child: pw.Text(
-                  'DATOS DEL EMPLEADOR: ${record.company.businessName}',
-                  style: pw.TextStyle(
-                    fontSize: 7,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          height: 18,
-        ),
-        pw.Table(
-          border: pw.TableBorder.all(color: _border, width: .45),
-          columnWidths: const {
-            0: pw.FlexColumnWidth(2.3),
-            1: pw.FlexColumnWidth(1.0),
-            2: pw.FlexColumnWidth(3.0),
-            3: pw.FlexColumnWidth(1.1),
-            4: pw.FlexColumnWidth(1.2),
-          },
-          children: [
-            _employerRow(
-              [
-                'RAZÓN O DENOMINACIÓN SOCIAL',
-                'RUC',
-                'DOMICILIO (Dirección, distrito, provincia, dpto.)',
-                'ACTIVIDAD ECONÓMICA',
-                'N° TRABAJADORES'
-              ],
-              header: true,
-            ),
-            _employerRow([
-              record.company.businessName,
-              record.company.ruc,
-              record.company.address,
-              record.company.economicActivity,
-              (record.company.employeeCount > 0
-                      ? record.company.employeeCount
-                      : record.participants.length)
-                  .toString()
-            ]),
-          ],
-        ),
-        pw.Table(
-          border: pw.TableBorder.all(color: _border, width: .45),
-          columnWidths: const {
-            0: pw.FlexColumnWidth(2.5),
-            1: pw.FlexColumnWidth(7.5)
-          },
-          children: [
-            pw.TableRow(
-              children: [
-                _cell(
-                  'CLASIFICACIÓN\n\nINDUCCIÓN      [ ]\nCAPACITACIÓN   [X]\nENTRENAMIENTO  [ ]\nSIMULACROS     [ ]\nOTROS          [ ]',
-                  height: 77,
-                  bold: true,
-                  align: pw.Alignment.centerLeft,
-                ),
-                _trainingData(record),
-              ],
-            ),
-          ],
-        ),
-        pw.Table(
-          border: pw.TableBorder.all(color: _border, width: .4),
-          columnWidths: const {
-            0: pw.FlexColumnWidth(.48),
-            1: pw.FlexColumnWidth(1.2),
-            2: pw.FlexColumnWidth(3.1),
-            3: pw.FlexColumnWidth(1.35),
-            4: pw.FlexColumnWidth(1.1),
-            5: pw.FlexColumnWidth(1.65),
-            6: pw.FlexColumnWidth(1.55),
-          },
-          children: [
-            pw.TableRow(
-              decoration: const pw.BoxDecoration(
-                color: PdfColor.fromInt(0xFFE8E8E8),
-              ),
-              children: [
-                'Nº',
-                'DNI',
-                'APELLIDOS Y NOMBRES',
-                'EMPRESA',
-                'ÁREA',
-                'CARGO',
-                'FIRMA'
-              ].map((text) => _cell(text, height: 23, bold: true)).toList(),
-            ),
-            ...List.generate(25, (index) {
-              final participant = rows[index];
-              return pw.TableRow(
-                children: [
-                  _cell(
-                    (start + index + 1).toString().padLeft(2, '0'),
-                    height: 20,
-                  ),
-                  _cell(participant?.dni ?? '', height: 20),
-                  _cell(
-                    participant?.fullName ?? '',
-                    height: 20,
-                    align: pw.Alignment.centerLeft,
-                  ),
-                  _cell(participant?.company ?? '', height: 20),
-                  _cell(participant?.area ?? '', height: 20),
-                  _cell(participant?.position ?? '', height: 20),
-                  _signatureCell(participant),
-                ],
-              );
-            }),
-          ],
-        ),
-      ],
-    );
-  }
 
-  pw.TableRow _employerRow(List<String> values, {bool header = false}) =>
-      pw.TableRow(
-        decoration: header
-            ? const pw.BoxDecoration(color: PdfColor.fromInt(0xFFE8E8E8))
-            : null,
-        children: values
-            .map(
-              (text) => _cell(
-                text,
-                height: header ? 28 : 34,
-                bold: header,
-              ),
-            )
-            .toList(),
-      );
-
-  pw.Widget _signatureCell(FsgiParticipant? participant) {
-    if (participant == null) return _cell('', height: 20);
-    if (participant.signaturePng == null) {
-      return _cell('PENDIENTE', height: 20, color: PdfColors.grey700);
+    final responsible = record.responsible;
+    widgets.addAll([
+      _text(responsible?.fullName ?? 'CUTIPA QUISPE JHONATHAN', 31.5, 283.7,
+          width: 96, size: 5.8),
+      _text(responsible?.position ?? 'ASISTENTE SSOMA', 31.5, 290.7,
+          width: 96, size: 5.8),
+      _text(record.date, 151, 290.7, width: 40, size: 5.8),
+    ]);
+    if (responsible?.signaturePng != null) {
+      widgets.add(_image(responsible!.signaturePng!, 151, 280.7, 39, 9));
     }
-    return pw.Container(
-      height: 20,
-      padding: const pw.EdgeInsets.all(1.5),
-      alignment: pw.Alignment.center,
-      child: pw.Image(
-        pw.MemoryImage(participant.signaturePng!),
-        fit: pw.BoxFit.contain,
-      ),
-    );
+    return pw.Stack(children: widgets);
   }
 
-  pw.Widget _trainingData(FsgiRecord record) {
-    final trainer = record.trainer;
-    return pw.Container(
-      height: 77,
-      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-      child: pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-        children: [
-          pw.Text(
-            'TEMA: ${record.course}',
-            style: pw.TextStyle(fontSize: 6, fontWeight: pw.FontWeight.bold),
-          ),
-          pw.Row(
-            children: [
-              pw.Expanded(
-                child: pw.Text(
-                  'EXPOSITOR: ${trainer?.fullName ?? 'NO ASIGNADO'}',
-                  style: const pw.TextStyle(fontSize: 5.5),
-                ),
-              ),
-              pw.SizedBox(
-                width: 105,
-                height: 27,
-                child: trainer?.signaturePng == null
-                    ? pw.Center(
-                        child: pw.Text(
-                          'FIRMA NO CARGADA',
-                          style: const pw.TextStyle(
-                            fontSize: 5,
-                            color: PdfColors.grey700,
-                          ),
-                        ),
-                      )
-                    : pw.Image(
-                        pw.MemoryImage(trainer!.signaturePng!),
-                        fit: pw.BoxFit.contain,
-                      ),
-              ),
-            ],
-          ),
-          pw.Text(
-            'CARGO: ${trainer?.position ?? ''}        FECHA: ${record.date}',
-            style: const pw.TextStyle(fontSize: 5.5),
-          ),
-          pw.Text(
-            'EMPRESA: ${record.company.businessName}        N° HORAS: __________',
-            style: const pw.TextStyle(fontSize: 5.5),
-          ),
-          pw.Row(
-            children: [
-              pw.Expanded(
-                child: pw.Text(
-                  'RESPONSABLE: ${record.responsible?.fullName ?? 'CUTIPA QUISPE JHONATHAN'} - ${record.responsible?.position ?? 'ASISTENTE SSOMA'}',
-                  style: const pw.TextStyle(fontSize: 5),
-                ),
-              ),
-              pw.SizedBox(
-                width: 72,
-                height: 14,
-                child: record.responsible?.signaturePng == null
-                    ? pw.Text(
-                        'FIRMA NO CARGADA',
-                        textAlign: pw.TextAlign.center,
-                        style: const pw.TextStyle(
-                          fontSize: 4.5,
-                          color: PdfColors.grey700,
-                        ),
-                      )
-                    : pw.Image(
-                        pw.MemoryImage(record.responsible!.signaturePng!),
-                        fit: pw.BoxFit.contain,
-                      ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  pw.Widget _box(pw.Widget child, {required double height}) => pw.Container(
-        height: height,
-        padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-        alignment: pw.Alignment.centerLeft,
-        decoration: pw.BoxDecoration(
-          border: pw.Border.all(color: _border, width: .45),
-        ),
-        child: child,
-      );
-
-  pw.Widget _cell(
-    String text, {
-    required double height,
+  pw.Widget _text(
+    String value,
+    double x,
+    double y, {
+    required double width,
+    required double size,
     bool bold = false,
-    pw.Alignment align = pw.Alignment.center,
-    PdfColor color = PdfColors.black,
+    pw.TextAlign align = pw.TextAlign.left,
   }) =>
-      pw.Container(
-        height: height,
-        padding: const pw.EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-        alignment: align,
+      pw.Positioned(
+        left: x * PdfPageFormat.mm,
+        top: y * PdfPageFormat.mm,
+        width: width * PdfPageFormat.mm,
         child: pw.Text(
-          text,
-          textAlign: align == pw.Alignment.centerLeft
-              ? pw.TextAlign.left
-              : pw.TextAlign.center,
-          maxLines: 3,
+          value,
+          maxLines: 2,
+          textAlign: align,
           style: pw.TextStyle(
-            fontSize: 5.5,
-            color: color,
+            fontSize: size,
             fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
           ),
         ),
+      );
+
+  pw.Widget _image(
+    Uint8List bytes,
+    double x,
+    double y,
+    double width,
+    double height,
+  ) =>
+      pw.Positioned(
+        left: x * PdfPageFormat.mm,
+        top: y * PdfPageFormat.mm,
+        width: width * PdfPageFormat.mm,
+        height: height * PdfPageFormat.mm,
+        child: pw.Image(pw.MemoryImage(bytes), fit: pw.BoxFit.contain),
       );
 }

@@ -69,13 +69,14 @@ class _AuthorizedSignaturesPageState extends State<AuthorizedSignaturesPage> {
               padding: const EdgeInsets.all(18),
               children: [
                 const Text(
-                  'Configuración local',
+                  'Firmas listas para usar',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Carga una imagen PNG o JPG por persona. Las firmas se '
-                  'guardan únicamente en este dispositivo.',
+                  'Roly y Karina se aplican automáticamente al elegir al '
+                  'capacitador. Jhonathan aparece como responsable del registro. '
+                  'Puedes reemplazar cualquier firma con una imagen nueva.',
                   style: TextStyle(color: Color(0xFF626B7A)),
                 ),
                 const SizedBox(height: 16),

@@ -63,6 +63,12 @@ jobs:
             -Ptrack-widget-creation=true \
             -Ptree-shake-icons=true
 
+      - name: Restore stable internal signing key
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/mur-wy-signing
+          key: mur-wy-internal-signing-v1
+
       - name: Sign test APK
         shell: bash
         run: |
@@ -71,9 +77,9 @@ jobs:
           UNSIGNED_APK="android/app/build/outputs/apk/release/app-release-unsigned.apk"
           SIGNED_APK="build/app/outputs/flutter-apk/app-release.apk"
           ALIGNED_APK="${RUNNER_TEMP}/app-release-aligned.apk"
-          KEYSTORE="${RUNNER_TEMP}/mur-wy-test.jks"
-          KEY_ALIAS="mur-wy-test"
-          KEY_PASSWORD="$(openssl rand -hex 16)"
+          KEYSTORE="${RUNNER_TEMP}/mur-wy-signing/mur-wy-internal.jks"
+          KEY_ALIAS="mur-wy-internal"
+          KEY_PASSWORD="android"
           SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
           BUILD_TOOLS_DIR="$(find "${SDK_ROOT}/build-tools" -mindepth 2 -maxdepth 2 -type f -name apksigner -printf '%h\n' | sort -V | tail -1)"
 
@@ -89,16 +95,19 @@ jobs:
           fi
 
           mkdir -p "$(dirname "${SIGNED_APK}")"
+          mkdir -p "$(dirname "${KEYSTORE}")"
 
-          keytool -genkeypair \
-            -keystore "${KEYSTORE}" \
-            -storepass "${KEY_PASSWORD}" \
-            -keypass "${KEY_PASSWORD}" \
-            -alias "${KEY_ALIAS}" \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 3650 \
-            -dname "CN=MUR WY SSOMA Test, OU=SSOMA, O=MUR WY, C=PE"
+          if [ ! -s "${KEYSTORE}" ]; then
+            keytool -genkeypair \
+              -keystore "${KEYSTORE}" \
+              -storepass "${KEY_PASSWORD}" \
+              -keypass "${KEY_PASSWORD}" \
+              -alias "${KEY_ALIAS}" \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 3650 \
+              -dname "CN=MUR WY SSOMA Internal, OU=SSOMA, O=MUR WY, C=PE"
+          fi
 
           "${BUILD_TOOLS_DIR}/zipalign" -f 4 "${UNSIGNED_APK}" "${ALIGNED_APK}"
 

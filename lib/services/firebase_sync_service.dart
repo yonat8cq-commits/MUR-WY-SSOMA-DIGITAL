@@ -3,7 +3,6 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../database/app_database.dart';
@@ -100,11 +99,17 @@ class FirebaseSyncService {
     payload['updated_at'] = FieldValue.serverTimestamp();
 
     if (type == 'CONSENT') {
-      payload['signature_path'] = await _uploadConsent(db, id, payload);
+      payload['signature_blob'] = Blob(await _consentSignature(db, payload));
+      payload['signature_content_type'] = 'image/png';
     } else if (type == 'CONFIRMATION') {
-      payload['signature_path'] = await _uploadConfirmation(db, id, payload);
+      payload['signature_blob'] = Blob(await _confirmationSignature(db, id));
+      payload['signature_content_type'] = 'image/png';
     } else if (type == 'AUTHORIZED_SIGNATURE') {
-      payload['signature_path'] = await _uploadAuthorizedSignature(db, id);
+      final signature = await _authorizedSignature(db, id);
+      if (signature != null) {
+        payload['signature_blob'] = Blob(signature);
+        payload['signature_content_type'] = 'image/png';
+      }
     }
 
     final target = _target(type, id, payload);
@@ -143,9 +148,8 @@ class FirebaseSyncService {
     }
   }
 
-  Future<String> _uploadConsent(
+  Future<Uint8List> _consentSignature(
     Database db,
-    String id,
     Map<String, Object?> payload,
   ) async {
     final dni = payload['dni'] as String;
@@ -156,15 +160,13 @@ class FirebaseSyncService {
       whereArgs: [dni, payload['version']],
       limit: 1,
     );
-    return _upload('consents/$dni/$id.png', _bytes(rows));
+    return _bytes(rows);
   }
 
-  Future<String> _uploadConfirmation(
+  Future<Uint8List> _confirmationSignature(
     Database db,
     String id,
-    Map<String, Object?> payload,
   ) async {
-    final dni = payload['dni'] as String;
     final rows = await db.query(
       'confirmaciones_capacitacion',
       columns: ['signature_png'],
@@ -172,10 +174,10 @@ class FirebaseSyncService {
       whereArgs: [id],
       limit: 1,
     );
-    return _upload('signatures/$dni/$id.png', _bytes(rows));
+    return _bytes(rows);
   }
 
-  Future<String?> _uploadAuthorizedSignature(Database db, String id) async {
+  Future<Uint8List?> _authorizedSignature(Database db, String id) async {
     final rows = await db.query(
       'firmas_autorizadas',
       columns: ['signature_png'],
@@ -184,7 +186,7 @@ class FirebaseSyncService {
       limit: 1,
     );
     if (rows.isEmpty || rows.first['signature_png'] == null) return null;
-    return _upload('signatures/admin/$id.png', _bytes(rows));
+    return _bytes(rows);
   }
 
   Uint8List _bytes(List<Map<String, Object?>> rows) {
@@ -192,15 +194,6 @@ class FirebaseSyncService {
       throw StateError('No se encontró la firma local que debe sincronizarse.');
     }
     return rows.first['signature_png'] as Uint8List;
-  }
-
-  Future<String> _upload(String path, Uint8List bytes) async {
-    final reference = FirebaseStorage.instance.ref(path);
-    await reference.putData(
-      bytes,
-      SettableMetadata(contentType: 'image/png'),
-    );
-    return path;
   }
 
   Future<int> _pendingCount() async {

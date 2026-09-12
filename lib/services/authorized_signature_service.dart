@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../database/app_database.dart';
@@ -30,7 +31,20 @@ class AuthorizedSignatureService {
       'firmas_autorizadas',
       orderBy: "CASE signer_role WHEN 'RESPONSABLE' THEN 0 ELSE 1 END, full_name",
     );
-    return rows.map(_fromRow).toList();
+    final result = <AuthorizedSigner>[];
+    for (final row in rows) {
+      final signer = _fromRow(row);
+      final signature = signer.signaturePng ?? await _bundledSignature(signer.id);
+      result.add(AuthorizedSigner(
+        id: signer.id,
+        fullName: signer.fullName,
+        position: signer.position,
+        role: signer.role,
+        signaturePng: signature,
+        active: signer.active,
+      ));
+    }
+    return result;
   }
 
   Future<List<AuthorizedSigner>> loadTrainers() async {
@@ -49,7 +63,18 @@ class AuthorizedSignatureService {
       whereArgs: [id],
       limit: 1,
     );
-    return rows.isEmpty ? null : _fromRow(rows.first);
+    if (rows.isEmpty) return null;
+    final signer = _fromRow(rows.first);
+    if (signer.signaturePng != null) return signer;
+    final bundled = await _bundledSignature(id);
+    return AuthorizedSigner(
+      id: signer.id,
+      fullName: signer.fullName,
+      position: signer.position,
+      role: signer.role,
+      signaturePng: bundled,
+      active: signer.active,
+    );
   }
 
   Future<void> saveSignature(String id, Uint8List signaturePng) async {
@@ -115,4 +140,20 @@ class AuthorizedSignatureService {
         signaturePng: row['signature_png'] as Uint8List?,
         active: (row['active'] as int? ?? 1) == 1,
       );
+
+  Future<Uint8List?> _bundledSignature(String id) async {
+    const assets = {
+      'roly': 'assets/signatures/roly_quispe_turpo.png',
+      'karina': 'assets/signatures/karina_castillo_cordova.png',
+      'jhonathan': 'assets/signatures/jhonathan_cutipa_quispe.png',
+    };
+    final path = assets[id];
+    if (path == null) return null;
+    try {
+      final data = await rootBundle.load(path);
+      return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    } catch (_) {
+      return null;
+    }
+  }
 }
