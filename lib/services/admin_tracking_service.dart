@@ -1,0 +1,123 @@
+import '../database/app_database.dart';
+import 'document_control_service.dart';
+
+class TrainingProgress {
+  final String key;
+  final String course;
+  final String date;
+  final int total;
+  final int signed;
+  final String status;
+  final DateTime deadline;
+  final int version;
+
+  const TrainingProgress({
+    required this.key,
+    required this.course,
+    required this.date,
+    required this.total,
+    required this.signed,
+    required this.status,
+    required this.deadline,
+    required this.version,
+  });
+
+  int get pending => total - signed;
+  double get ratio => total == 0 ? 0 : signed / total;
+}
+
+class ParticipantProgress {
+  final String dni;
+  final String fullName;
+  final String company;
+  final String area;
+  final String position;
+  final bool signed;
+
+  const ParticipantProgress({
+    required this.dni,
+    required this.fullName,
+    required this.company,
+    required this.area,
+    required this.position,
+    required this.signed,
+  });
+}
+
+class AdminTrackingService {
+  Future<List<TrainingProgress>> loadTrainings() async {
+    final db = await AppDatabase.instance.database;
+    final rows = await db.rawQuery('''
+      SELECT
+        c.training_key,
+        c.course,
+        c.training_date,
+        COUNT(p.dni) AS total,
+        SUM(CASE WHEN f.record_key IS NULL THEN 0 ELSE 1 END) AS signed
+      FROM capacitaciones_importadas c
+      LEFT JOIN participantes_capacitacion p
+        ON p.training_key = c.training_key
+      LEFT JOIN confirmaciones_capacitacion f
+        ON f.training_key = p.training_key AND f.dni = p.dni
+      WHERE c.status != 'ARCHIVADO'
+      GROUP BY c.training_key, c.course, c.training_date
+      ORDER BY c.training_date DESC, c.course ASC
+    ''');
+    final result = <TrainingProgress>[];
+    final documentService = DocumentControlService();
+    for (final row in rows) {
+      final key = row['training_key'] as String;
+      final date = row['training_date'] as String? ?? '';
+      final total = row['total'] as int? ?? 0;
+      final signed = row['signed'] as int? ?? 0;
+      final control = await documentService.load(key, date);
+      result.add(
+        TrainingProgress(
+          key: key,
+          course: row['course'] as String? ?? '',
+          date: date,
+          total: total,
+          signed: signed,
+          status: control.statusFor(total: total, signed: signed),
+          deadline: control.deadline,
+          version: control.version,
+        ),
+      );
+    }
+    return result;
+  }
+
+  Future<List<ParticipantProgress>> loadParticipants(String trainingKey) async {
+    final db = await AppDatabase.instance.database;
+    final rows = await db.rawQuery(
+      '''
+      SELECT
+        p.dni,
+        w.full_name,
+        w.company,
+        w.area,
+        w.position,
+        CASE WHEN f.record_key IS NULL THEN 0 ELSE 1 END AS signed
+      FROM participantes_capacitacion p
+      INNER JOIN trabajadores_importados w ON w.dni = p.dni
+      LEFT JOIN confirmaciones_capacitacion f
+        ON f.training_key = p.training_key AND f.dni = p.dni
+      WHERE p.training_key = ?
+      ORDER BY w.full_name ASC
+      ''',
+      [trainingKey],
+    );
+    return rows
+        .map(
+          (row) => ParticipantProgress(
+            dni: row['dni'] as String,
+            fullName: row['full_name'] as String? ?? '',
+            company: row['company'] as String? ?? '',
+            area: row['area'] as String? ?? '',
+            position: row['position'] as String? ?? '',
+            signed: (row['signed'] as int? ?? 0) == 1,
+          ),
+        )
+        .toList();
+  }
+}
