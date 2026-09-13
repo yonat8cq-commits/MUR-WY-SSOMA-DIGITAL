@@ -20,7 +20,7 @@ class AppDatabase {
 
     return openDatabase(
       path,
-      version: 13,
+      version: 14,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE trabajadores (
@@ -96,6 +96,9 @@ class AppDatabase {
         }
         if (oldVersion < 13) {
           await _setCurrentMurWyEmployeeCount(db);
+        }
+        if (oldVersion < 14) {
+          await _replaceDefectiveKarinaSignature(db);
         }
       },
     );
@@ -185,6 +188,18 @@ class AppDatabase {
       },
       where: 'company_id = ? AND employee_count IN (0, 79, 80)',
       whereArgs: ['mur_wy'],
+    );
+  }
+
+  Future<void> _replaceDefectiveKarinaSignature(Database db) async {
+    await db.update(
+      'firmas_autorizadas',
+      {
+        'signature_png': null,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      },
+      where: 'signer_id = ?',
+      whereArgs: ['karina'],
     );
   }
 

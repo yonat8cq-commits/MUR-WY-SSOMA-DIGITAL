@@ -58,8 +58,12 @@ class FirebasePullService {
       final updateProfile = <String, Object?>{
         'full_name': _text(profile['full_name']),
         'company': _text(profile['company']),
-        'area': _text(profile['area']),
-        'position': _text(profile['position']),
+        'area': _text(profile['roster_area']).isNotEmpty
+            ? _text(profile['roster_area'])
+            : _text(profile['area']),
+        'position': _text(profile['roster_position']).isNotEmpty
+            ? _text(profile['roster_position'])
+            : _text(profile['position']),
         'account_status': _text(profile['account_status']).isEmpty
             ? 'TEMPORAL'
             : _text(profile['account_status']),

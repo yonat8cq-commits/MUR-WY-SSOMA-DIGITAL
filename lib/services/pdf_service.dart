@@ -282,6 +282,7 @@ class PdfService {
       widgets.add(_image(responsible!.signaturePng!, 147, 277.8, 35, 11.5,
           fit: pw.BoxFit.fill));
     }
+    widgets.add(_whiteBox(201, 290, 9, 7));
     return pw.Stack(children: widgets);
   }
 
