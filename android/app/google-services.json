@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "361183826788",
+    "project_id": "mur-wy-ssoma-digital",
+    "storage_bucket": "mur-wy-ssoma-digital.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:361183826788:android:5371f89b372fd148c8e071",
+        "android_client_info": {
+          "package_name": "com.murwy.ssoma.digital"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC6fqJd37KVN7eEZMqPz1teMW_WBx4EFvI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
