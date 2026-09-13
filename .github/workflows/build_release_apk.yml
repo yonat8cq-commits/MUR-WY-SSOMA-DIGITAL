@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - codex/mvp-trabajador-fase-1
+      - codex/fsgi-oficial-firmas-apk
 
 jobs:
   build-apk:
