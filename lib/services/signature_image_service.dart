@@ -6,7 +6,10 @@ import 'package:image/image.dart' as img;
 class SignatureImageService {
   const SignatureImageService._();
 
-  static Uint8List normalize(Uint8List source) {
+  static Uint8List normalize(
+    Uint8List source, {
+    bool blackInk = false,
+  }) {
     final decoded = img.decodeImage(source);
     if (decoded == null) return source;
 
@@ -61,7 +64,12 @@ class SignatureImageService {
       );
       final ink = (255 - lightestInk).clamp(0, 255);
       final alpha = (originalAlpha * ink / 255).round().clamp(0, 255);
-      pixel.setRgba(18, 57, 158, alpha);
+      pixel.setRgba(
+        18,
+        blackInk ? 18 : 57,
+        blackInk ? 18 : 158,
+        alpha,
+      );
     }
 
     return Uint8List.fromList(img.encodePng(cropped, level: 6));

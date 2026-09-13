@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:sqflite/sqflite.dart';
 import '../database/app_database.dart';
 import 'document_control_service.dart';
 import 'sync_outbox_service.dart';
 import 'firebase_auth_service.dart';
+import 'firebase_sync_service.dart';
 import 'signature_image_service.dart';
 
 class OfflineWorkflowService {
@@ -79,6 +81,7 @@ class OfflineWorkflowService {
         },
       );
     });
+    unawaited(FirebaseSyncService.instance.syncPending());
   }
 
   Future<bool> trainingWasSigned(String trainingKey) async {
@@ -157,6 +160,7 @@ class OfflineWorkflowService {
         },
       );
     });
+    unawaited(FirebaseSyncService.instance.syncPending());
   }
 
   Future<String?> _get(String key) async {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../services/offline_workflow_service.dart';
 import '../../services/worker_data_service.dart';
@@ -14,21 +16,46 @@ class WorkerHomePage extends StatefulWidget {
   State<WorkerHomePage> createState() => _WorkerHomePageState();
 }
 
-class _WorkerHomePageState extends State<WorkerHomePage> {
+class _WorkerHomePageState extends State<WorkerHomePage>
+    with WidgetsBindingObserver {
   int _index = 0;
   bool _loading = true;
   WorkerProfile? _profile;
   List<AssignedTraining> _trainings = [];
   bool _sharedDevice = false;
   bool _syncing = false;
+  Timer? _centralRefreshTimer;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    WidgetsBinding.instance.addObserver(this);
+    _load(refreshCentral: true);
+    _centralRefreshTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _load(refreshCentral: true, silent: true),
+    );
   }
 
-  Future<void> _load({bool refreshCentral = false}) async {
+  @override
+  void dispose() {
+    _centralRefreshTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _load(refreshCentral: true, silent: true);
+    }
+  }
+
+  Future<void> _load({
+    bool refreshCentral = false,
+    bool silent = false,
+  }) async {
+    if (refreshCentral && _syncing) return;
     final dni = await OfflineWorkflowService.instance.currentDni;
     if (dni == null) {
       if (mounted) {
@@ -37,12 +64,16 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
       return;
     }
     if (refreshCentral && FirebaseAuthService.instance.hasCentralSession) {
-      if (mounted) setState(() => _syncing = true);
+      if (mounted && !silent) {
+        setState(() => _syncing = true);
+      } else {
+        _syncing = true;
+      }
       try {
         await FirebasePullService.instance.pullWorkerWorkspace(dni);
         await FirebaseSyncService.instance.syncPending();
       } catch (_) {
-        if (mounted) {
+        if (mounted && !silent) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
@@ -52,7 +83,11 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
           );
         }
       } finally {
-        if (mounted) setState(() => _syncing = false);
+        if (mounted && !silent) {
+          setState(() => _syncing = false);
+        } else {
+          _syncing = false;
+        }
       }
     }
     final shared = await OfflineWorkflowService.instance.sharedDeviceMode;
@@ -110,20 +145,18 @@ class _WorkerHomePageState extends State<WorkerHomePage> {
           ],
         ),
         actions: [
-          IconButton(
-            tooltip: 'Actualizar desde el panel central',
-            onPressed: _syncing ? null : () => _load(refreshCentral: true),
-            icon: _syncing
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.sync),
-          ),
+          if (_syncing)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           IconButton(
             tooltip: 'Cerrar sesión',
             onPressed: _logout,

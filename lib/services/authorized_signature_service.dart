@@ -33,7 +33,12 @@ class AuthorizedSignatureService {
     final result = <AuthorizedSigner>[];
     for (final row in rows) {
       final signer = _fromRow(row);
-      final signature = signer.signaturePng ?? await _bundledSignature(signer.id);
+      final signature = signer.signaturePng == null
+          ? await _bundledSignature(signer.id)
+          : SignatureImageService.normalize(
+              signer.signaturePng!,
+              blackInk: signer.id == 'karina',
+            );
       result.add(AuthorizedSigner(
         id: signer.id,
         fullName: signer.fullName,
@@ -69,7 +74,19 @@ class AuthorizedSignatureService {
     );
     if (rows.isEmpty) return null;
     final signer = _fromRow(rows.first);
-    if (signer.signaturePng != null) return signer;
+    if (signer.signaturePng != null) {
+      return AuthorizedSigner(
+        id: signer.id,
+        fullName: signer.fullName,
+        position: signer.position,
+        role: signer.role,
+        signaturePng: SignatureImageService.normalize(
+          signer.signaturePng!,
+          blackInk: signer.id == 'karina',
+        ),
+        active: signer.active,
+      );
+    }
     final bundled = await _bundledSignature(id);
     return AuthorizedSigner(
       id: signer.id,
@@ -83,7 +100,10 @@ class AuthorizedSignatureService {
 
   Future<void> saveSignature(String id, Uint8List signaturePng) async {
     final db = await AppDatabase.instance.database;
-    final normalizedSignature = SignatureImageService.normalize(signaturePng);
+    final normalizedSignature = SignatureImageService.normalize(
+      signaturePng,
+      blackInk: id == 'karina',
+    );
     await db.update(
       'firmas_autorizadas',
       {
@@ -199,6 +219,7 @@ class AuthorizedSignatureService {
       final data = await rootBundle.load(path);
       return SignatureImageService.normalize(
         data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+        blackInk: id == 'karina',
       );
     } catch (_) {
       return null;
