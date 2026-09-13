@@ -8,8 +8,8 @@ on:
   push:
     branches:
       - main
-      - codex/mvp-trabajador-fase-1
       - codex/fsgi-oficial-firmas-apk
+      - codex/firebase-central-v1_0_5
 
 jobs:
   build-apk:
@@ -19,50 +19,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.24.0'
-          channel: stable
-
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Clean project
-        run: |
-          flutter clean
-          rm -rf android/.gradle
-
-      - name: Flutter dependencies
-        run: flutter pub get
-
-      - name: Setup Gradle 8.7
+      - name: Setup Gradle 8.11.1
         uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: '8.7'
+          gradle-version: '8.11.1'
 
-      - name: Validate Gradle
-        run: gradle --version
-
-      - name: Analyze project
-        run: flutter analyze --no-fatal-warnings
-
-      - name: Build release APK
-        working-directory: android
+      - name: Install Android SDK 36
+        shell: bash
         run: |
-          gradle app:assembleRelease \
-            --no-daemon \
-            --stacktrace \
-            --console=plain \
-            -Ptarget-platform=android-arm,android-arm64,android-x64 \
-            -Ptarget=lib/main.dart \
-            -Pbase-application-name=android.app.Application \
-            -Pdart-obfuscation=false \
-            -Ptrack-widget-creation=true \
-            -Ptree-shake-icons=true
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          SDKMANAGER="${SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
+
+          if [ ! -x "${SDKMANAGER}" ]; then
+            SDKMANAGER="$(find "${SDK_ROOT}/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)"
+          fi
+
+          if [ -z "${SDKMANAGER}" ] || [ ! -x "${SDKMANAGER}" ]; then
+            echo "Android sdkmanager was not found"
+            exit 1
+          fi
+
+          "${SDKMANAGER}" "platforms;android-36" "build-tools;35.0.0"
+
+      - name: Build central Android app
+        run: gradle -p android-twa :app:assembleRelease --no-daemon --stacktrace --console=plain
 
       - name: Restore stable internal signing key
         uses: actions/cache@v4
@@ -70,13 +57,13 @@ jobs:
           path: ${{ runner.temp }}/mur-wy-signing
           key: mur-wy-internal-signing-v1
 
-      - name: Sign test APK
+      - name: Sign installable APK
         shell: bash
         run: |
           set -euo pipefail
 
-          UNSIGNED_APK="android/app/build/outputs/apk/release/app-release-unsigned.apk"
-          SIGNED_APK="build/app/outputs/flutter-apk/app-release.apk"
+          UNSIGNED_APK="android-twa/app/build/outputs/apk/release/app-release-unsigned.apk"
+          SIGNED_APK="build/app/outputs/apk/MUR-WY-SSOMA-DIGITAL-v2.0.0.apk"
           ALIGNED_APK="${RUNNER_TEMP}/app-release-aligned.apk"
           KEYSTORE="${RUNNER_TEMP}/mur-wy-signing/mur-wy-internal.jks"
           KEY_ALIAS="mur-wy-internal"
@@ -86,7 +73,7 @@ jobs:
 
           if [ ! -s "${UNSIGNED_APK}" ]; then
             echo "Unsigned release APK was not found at ${UNSIGNED_APK}"
-            find android/app/build/outputs -name "*.apk" -type f -print || true
+            find android-twa/app/build/outputs -name "*.apk" -type f -print || true
             exit 1
           fi
 
@@ -127,13 +114,13 @@ jobs:
 
       - name: Verify APK
         run: |
-          test -s build/app/outputs/flutter-apk/app-release.apk
-          ls -lh build/app/outputs/flutter-apk/app-release.apk
-          sha256sum build/app/outputs/flutter-apk/app-release.apk
+          test -s build/app/outputs/apk/MUR-WY-SSOMA-DIGITAL-v2.0.0.apk
+          ls -lh build/app/outputs/apk/MUR-WY-SSOMA-DIGITAL-v2.0.0.apk
+          sha256sum build/app/outputs/apk/MUR-WY-SSOMA-DIGITAL-v2.0.0.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MUR-WY-SSOMA-DIGITAL-APK-INSTALABLE
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: MUR-WY-SSOMA-DIGITAL-v2.0.0-INSTALABLE
+          path: build/app/outputs/apk/MUR-WY-SSOMA-DIGITAL-v2.0.0.apk
           if-no-files-found: error
