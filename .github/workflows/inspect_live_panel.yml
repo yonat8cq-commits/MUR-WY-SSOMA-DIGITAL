@@ -12,7 +12,7 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect public HTML and client assets
+      - name: Inspect public panel contract
         env:
           SITE_URL: https://mur-wy-ssoma-digital.roboasaltante.chatgpt.site/
         run: |
@@ -23,67 +23,73 @@ jobs:
           import urllib.parse
 
           base = os.environ["SITE_URL"]
-          request = urllib.request.Request(
-              base,
-              headers={
-                  "User-Agent": "Mozilla/5.0 Android SSOMA diagnostics",
-                  "Accept-Encoding": "identity",
-              },
-          )
-          with urllib.request.urlopen(request, timeout=30) as response:
-              html = response.read().decode("utf-8", "replace")
-              print("PAGE_STATUS", response.status)
-              print("PAGE_BYTES", len(html.encode("utf-8")))
+
+          def fetch(url):
+              request = urllib.request.Request(
+                  url,
+                  headers={
+                      "User-Agent": "Mozilla/5.0 Android SSOMA diagnostics",
+                      "Accept-Encoding": "identity",
+                  },
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  return response.status, response.read().decode("utf-8", "replace")
+
+          status, html = fetch(base)
+          print("PAGE_STATUS", status)
+          print("PAGE_BYTES", len(html.encode("utf-8")))
 
           refs = []
           refs += re.findall(r'<script[^>]+src=["\']([^"\']+)["\']', html, re.I)
           refs += re.findall(r'<link[^>]+href=["\']([^"\']+)["\']', html, re.I)
           refs = list(dict.fromkeys(refs))
           print("ASSET_COUNT", len(refs))
-          for ref in refs:
-              print("ASSET", urllib.parse.urljoin(base, ref))
 
-          patterns = re.compile(
-              r"action=|/api/|login|bootstrap|seed|create.?admin|must_change_password|"
-              r"recordar|remember|checkbox|radio|localStorage|sessionStorage|serviceWorker|"
-              r"firebase|sync|sincron",
-              re.I,
-          )
-
-          def report(label, text):
-              print("SCAN_BEGIN", label)
-              matches = list(patterns.finditer(text))
-              print("MATCH_COUNT", len(matches))
-              seen = set()
-              for match in matches[:250]:
-                  start = max(0, match.start() - 180)
-                  end = min(len(text), match.end() + 260)
-                  snippet = re.sub(r"\s+", " ", text[start:end])
-                  if snippet in seen:
-                      continue
-                  seen.add(snippet)
-                  print("MATCH", snippet)
-              print("SCAN_END", label)
-
-          report("index.html", html)
+          def contexts(label, text, marker, radius=420):
+              hits = [m.start() for m in re.finditer(re.escape(marker), text, re.I)]
+              print("CONTEXT_COUNT", label, marker, len(hits))
+              for pos in hits[:20]:
+                  snippet = re.sub(r"\s+", " ", text[max(0, pos-radius):min(len(text), pos+radius)])
+                  print("CONTEXT", label, marker, snippet)
 
           for ref in refs:
               url = urllib.parse.urljoin(base, ref)
-              if not any(url.split("?", 1)[0].endswith(ext) for ext in (".js", ".mjs", ".css", ".json")):
+              print("ASSET", url)
+              if not any(url.split("?", 1)[0].endswith(ext) for ext in (".js", ".mjs", ".css", ".json", ".webmanifest")):
                   continue
               try:
-                  req = urllib.request.Request(
-                      url,
-                      headers={
-                          "User-Agent": "Mozilla/5.0 Android SSOMA diagnostics",
-                          "Accept-Encoding": "identity",
-                      },
-                  )
-                  with urllib.request.urlopen(req, timeout=30) as response:
-                      raw = response.read()
-                  text = raw.decode("utf-8", "replace")
-                  print("ASSET_BYTES", url, len(raw))
-                  report(url, text)
+                  asset_status, text = fetch(url)
+                  print("ASSET_STATUS", asset_status, url)
+                  print("ASSET_BYTES", len(text.encode("utf-8")), url)
+                  actions = sorted(set(
+                      m.group(1)
+                      for m in re.finditer(r'Vw\(\s*[\x60"\']([^\x60"\']+)[\x60"\']', text)
+                  ))
+                  if actions:
+                      print("CLIENT_API_ACTIONS", actions)
+                  for marker in (
+                      "Administrador principal:",
+                      "admin-login",
+                      "zw=",
+                      "Primer ingreso del trabajador",
+                      "Recordar mi acceso",
+                      "Celular compartido",
+                      "change-password",
+                      "reset-worker",
+                  ):
+                      contexts(url, text, marker)
+                  source_maps = re.findall(r"sourceMappingURL=([^\s*]+)", text)
+                  if source_maps:
+                      print("SOURCE_MAPS", source_maps)
               except Exception as exc:
                   print("ASSET_ERROR", url, type(exc).__name__, str(exc))
+
+          for path in ("manifest.webmanifest", "sw.js", ".well-known/assetlinks.json"):
+              url = urllib.parse.urljoin(base, path)
+              try:
+                  item_status, item = fetch(url)
+                  print("PUBLIC_FILE", path, item_status, len(item.encode("utf-8")))
+                  print("PUBLIC_CONTENT", path, re.sub(r"\s+", " ", item[:5000]))
+              except Exception as exc:
+                  print("PUBLIC_FILE_ERROR", path, type(exc).__name__, str(exc))
           PY
