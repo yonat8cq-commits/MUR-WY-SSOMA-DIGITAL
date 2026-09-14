@@ -11,6 +11,9 @@ on:
       - codex/fsgi-oficial-firmas-apk
       - codex/firebase-central-v1_0_5
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
@@ -124,3 +127,21 @@ jobs:
           name: MUR-WY-SSOMA-DIGITAL-v2.0.1-INSTALABLE
           path: build/app/outputs/apk/MUR-WY-SSOMA-DIGITAL-v2.0.1.apk
           if-no-files-found: error
+
+      - name: Publish direct APK download
+        if: github.event_name != 'pull_request'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="apk-v2.0.1"
+          APK="build/app/outputs/apk/MUR-WY-SSOMA-DIGITAL-v2.0.1.apk"
+
+          if ! gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release create "${TAG}" \
+              --title "MUR WY SSOMA DIGITAL v2.0.1" \
+              --notes "APK Android estable con acceso al sistema central MUR WY SSOMA DIGITAL."
+          fi
+
+          gh release upload "${TAG}" "${APK}" --clobber
