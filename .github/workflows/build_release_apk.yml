@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - codex/firebase-central-v1_0_5
+      - codex/apk-access-fix
 
 jobs:
   build-apk:
@@ -62,7 +63,7 @@ jobs:
           set -euo pipefail
 
           UNSIGNED_APK="android-twa/app/build/outputs/apk/release/app-release-unsigned.apk"
-          SIGNED_APK="build/app/outputs/apk/MUR-WY-SSOMA-DIGITAL-v2.0.0.apk"
+          SIGNED_APK="build/app/outputs/apk/MUR-WY-SSOMA-DIGITAL-v2.1.0.apk"
           ALIGNED_APK="${RUNNER_TEMP}/app-release-aligned.apk"
           KEYSTORE="${RUNNER_TEMP}/mur-wy-signing/mur-wy-internal.jks"
           KEY_ALIAS="mur-wy-internal"
@@ -111,15 +112,26 @@ jobs:
             --print-certs \
             "${SIGNED_APK}"
 
-      - name: Verify APK
+      - name: Verify APK and launcher
+        shell: bash
         run: |
-          test -s build/app/outputs/apk/MUR-WY-SSOMA-DIGITAL-v2.0.0.apk
-          ls -lh build/app/outputs/apk/MUR-WY-SSOMA-DIGITAL-v2.0.0.apk
-          sha256sum build/app/outputs/apk/MUR-WY-SSOMA-DIGITAL-v2.0.0.apk
+          set -euo pipefail
+          APK="build/app/outputs/apk/MUR-WY-SSOMA-DIGITAL-v2.1.0.apk"
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          AAPT="$(find "${SDK_ROOT}/build-tools" -mindepth 2 -maxdepth 2 -type f -name aapt | sort -V | tail -1)"
+
+          test -s "${APK}"
+          test -x "${AAPT}"
+          "${AAPT}" dump badging "${APK}" | tee "${RUNNER_TEMP}/apk-badging.txt"
+          grep -F "package: name='com.murwy.ssoma.digital' versionCode='20100' versionName='2.1.0'" "${RUNNER_TEMP}/apk-badging.txt"
+          grep -F "launchable-activity: name='com.murwy.ssoma.digital.MainActivity'" "${RUNNER_TEMP}/apk-badging.txt"
+          unzip -l "${APK}" | grep -F "classes.dex"
+          ls -lh "${APK}"
+          sha256sum "${APK}"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MUR-WY-SSOMA-DIGITAL-v2.0.0-INSTALABLE
-          path: build/app/outputs/apk/MUR-WY-SSOMA-DIGITAL-v2.0.0.apk
+          name: MUR-WY-SSOMA-DIGITAL-v2.1.0-INSTALABLE
+          path: build/app/outputs/apk/MUR-WY-SSOMA-DIGITAL-v2.1.0.apk
           if-no-files-found: error
