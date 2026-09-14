@@ -1,0 +1,23 @@
+name: Recuperar acceso administrador SSOMA
+
+on:
+  push:
+    branches:
+      - codex/fsgi-oficial-firmas-apk
+    paths:
+      - .github/workflows/reset_admin_access.yml
+
+jobs:
+  send-reset:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enviar enlace oficial de cambio de contraseña
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESPONSE="$(curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header 'Content-Type: application/json' \
+            --data '{"requestType":"PASSWORD_RESET","email":"roboasaltante@gmail.com"}' \
+            'https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=AIzaSyC6fqJd37KVN7eEZMqPz1teMW_WBx4EFvI')"
+          printf '%s' "${RESPONSE}" | python3 -c 'import json,sys; data=json.load(sys.stdin); print("Enlace enviado a:", data.get("email", "correo administrador"))'
