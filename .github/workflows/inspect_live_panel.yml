@@ -1,0 +1,89 @@
+name: Inspect live SSOMA panel
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/apk-access-fix
+    paths:
+      - .github/workflows/inspect_live_panel.yml
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect public HTML and client assets
+        env:
+          SITE_URL: https://mur-wy-ssoma-digital.roboasaltante.chatgpt.site/
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          import urllib.request
+          import urllib.parse
+
+          base = os.environ["SITE_URL"]
+          request = urllib.request.Request(
+              base,
+              headers={
+                  "User-Agent": "Mozilla/5.0 Android SSOMA diagnostics",
+                  "Accept-Encoding": "identity",
+              },
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              html = response.read().decode("utf-8", "replace")
+              print("PAGE_STATUS", response.status)
+              print("PAGE_BYTES", len(html.encode("utf-8")))
+
+          refs = []
+          refs += re.findall(r'<script[^>]+src=["\']([^"\']+)["\']', html, re.I)
+          refs += re.findall(r'<link[^>]+href=["\']([^"\']+)["\']', html, re.I)
+          refs = list(dict.fromkeys(refs))
+          print("ASSET_COUNT", len(refs))
+          for ref in refs:
+              print("ASSET", urllib.parse.urljoin(base, ref))
+
+          patterns = re.compile(
+              r"action=|/api/|login|bootstrap|seed|create.?admin|must_change_password|"
+              r"recordar|remember|checkbox|radio|localStorage|sessionStorage|serviceWorker|"
+              r"firebase|sync|sincron",
+              re.I,
+          )
+
+          def report(label, text):
+              print("SCAN_BEGIN", label)
+              matches = list(patterns.finditer(text))
+              print("MATCH_COUNT", len(matches))
+              seen = set()
+              for match in matches[:250]:
+                  start = max(0, match.start() - 180)
+                  end = min(len(text), match.end() + 260)
+                  snippet = re.sub(r"\s+", " ", text[start:end])
+                  if snippet in seen:
+                      continue
+                  seen.add(snippet)
+                  print("MATCH", snippet)
+              print("SCAN_END", label)
+
+          report("index.html", html)
+
+          for ref in refs:
+              url = urllib.parse.urljoin(base, ref)
+              if not any(url.split("?", 1)[0].endswith(ext) for ext in (".js", ".mjs", ".css", ".json")):
+                  continue
+              try:
+                  req = urllib.request.Request(
+                      url,
+                      headers={
+                          "User-Agent": "Mozilla/5.0 Android SSOMA diagnostics",
+                          "Accept-Encoding": "identity",
+                      },
+                  )
+                  with urllib.request.urlopen(req, timeout=30) as response:
+                      raw = response.read()
+                  text = raw.decode("utf-8", "replace")
+                  print("ASSET_BYTES", url, len(raw))
+                  report(url, text)
+              except Exception as exc:
+                  print("ASSET_ERROR", url, type(exc).__name__, str(exc))
+          PY
